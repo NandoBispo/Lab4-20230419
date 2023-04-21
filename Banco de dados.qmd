@@ -1,0 +1,57 @@
+---
+title: "Banco de dados: Boston House Prices"
+author: "Fernado Bispo, Jeff Caponero"
+format:
+    pdf:
+      toc: false
+      colorlinks: true
+      documentclass: report
+      papersize: letter
+      number-sections: false
+---
+
+## Sobre o banco de dados
+
+### Contexto
+
+Os dados de preços de 506 casas em Boston publicados em HHarrison, D. and Rubinfeld, D.L. 'Hedonic prices and the demand for clean air', J. Environ. Economics & Management, vol.5, 81-102, 1978.  
+Os dados podem ser acessados em:  https://www.kaggle.com/datasets/fedesoriano/the-boston-houseprice-data.  
+
+### Objetivo
+
+O objetivo deste trabalho será determinar, a partir de técnicas de regressão linear, o preço de casas em Boston com base nos dados fornecidos pelo banco de dados análisado.
+
+
+### Informações do conteúdo do banco de dados
+
+:::{.incrementyal}
+1) CRIM: índice de criminalidade per capita por bairro.    
+2) ZN: proporção de terreno residencial zoneada para lotes acima de 25.000 sq.ft.  
+3) INDUS: proporção de hectares de negócios não varejistas por bairro.  
+4) CHAS: Margem do rio Charles (1 se o trecho margeia o rio; 0 caso contrário).  
+5) NOX: concentração de óxidos nítricos (partes por 10 milhões) [partes/10M].  
+6) RM: número médio de cômodos por habitação.  
+7) IDADE: proporção de unidades próprias construídas antes de 1940.  
+8) DIS: distâncias ponderadas para cinco centros de emprego de Boston.  
+9) RAD: índice de acessibilidade às rodovias radiais.  
+10) IMPOSTO: valor total do imposto predial por \$10.000 [\$/10k].  
+11) PTRATIO: proporção aluno-professor por bairro.  
+12) B: O resultado da equação $B=1000(Bk - 0,63)^2$ onde $Bk$ é a proporção de negros por bairro.    
+13) LSTAT: % da população de "classe baixa".  
+:::
+
+### Variável de saída:
+1) MEDV: Valor médio de residências ocupadas pelo proprietário em US\$1.000 [k\$].  
+
+### Fonte
+
+StatLib - Carnegie Mellon University
+
+
+### Referências
+
+:::{.incrementyal}
+Harrison, David & Rubinfeld, Daniel. (1978). Hedonic housing prices and the demand for clean air. Journal of Environmental Economics and Management. 5. 81-102. 10.1016/0095-0696(78)90006-2. 
+
+Belsley, David A. & Kuh, Edwin. & Welsch, Roy E. (1980). Regression diagnostics: identifying influential data and sources of collinearity. New York: Wiley.
+:::
