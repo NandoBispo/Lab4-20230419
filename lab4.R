@@ -162,7 +162,7 @@ dados|>
 #   kable_material()
 
 # Histograma ----
-
+## g1 age ----
 g1 <- dados|>
   ggplot() +
   aes(x = age) +
@@ -186,6 +186,7 @@ g1 <- dados|>
     y = "Densidade"
   )
 
+## g2 crim ----
 g2 <- dados|>
   ggplot() +
   aes(x = crim) +
@@ -211,6 +212,7 @@ g2 <- dados|>
     y = "Densidade"
   )
 
+## g3 dis ----
 g3 <- dados|>
   ggplot() +
   aes(x = dis) +
@@ -239,6 +241,7 @@ g3 <- dados|>
     y = "Densidade"
   )
 
+## g4 indus ----
 g4 <- dados|>
   ggplot() +
   aes(x = indus) +
@@ -262,8 +265,7 @@ g4 <- dados|>
     y = "Densidade"
   )
 
-## 5 ----
-
+## g5 lstat ----
 g5 <- dados|>
   ggplot() +
   aes(x = lstat) +
@@ -287,6 +289,7 @@ g5 <- dados|>
     y = "Densidade"
   )
 
+## g6 medv ----
 g6 <- dados|>
   ggplot() +
   aes(x = medv) +
@@ -309,7 +312,7 @@ g6 <- dados|>
     x = "Valor Médio",
     y = "Densidade"
   )
-
+## g7 nox ----
 g7 <- dados|>
   ggplot() +
   aes(x = nox) +
@@ -332,6 +335,7 @@ g7 <- dados|>
     y = "Densidade"
   )
 
+## g8 ptratio ----
 g8 <- dados|>
   ggplot() +
   aes(x = ptratio) +
@@ -360,6 +364,7 @@ g8 <- dados|>
     y = "Densidade"
   )
 
+## g9 rm ----
 g9 <- dados|>
   ggplot() +
   aes(x = rm) +
@@ -382,6 +387,7 @@ g9 <- dados|>
     y = "Densidade"
   )
 
+## g10 tax ----
 g10 <- dados|>
   ggplot() +
   aes(x = tax) +
@@ -400,73 +406,161 @@ g10 <- dados|>
       decimal.mark = ","
     )) +
   labs(
-    title = "Valor total do imposto predial",
+    title = "Taxa de imposto predial",
     x = "Valor por $10.000",
     y = "Densidade"
   )
 
-(g1+g2) + plot_annotation(
-  title = "Figura 1: Histogramas das variáveis em análise.",
-  tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
-  tag_suffix = ":") &
-  theme_bw(base_size = 9) &
-  theme(
-    plot.tag.position = c(0, 1),
-    plot.tag = element_text(size = 7, hjust = 0, vjust = -0.2)
-  )
-
-(g3+g4) + plot_annotation(
-  # title = "Figura 1: Histogramas das variáveis em análise.",
-  tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
-  tag_suffix = ":") &
-  theme_bw(base_size = 9) &
-  theme(
-    plot.tag.position = c(0, 1),
-    plot.tag = element_text(size = 7, hjust = 0, vjust = -0.2)
-  )
-
-(g5+g6) + plot_annotation(
-  # title = "Figura 1: Histogramas das variáveis em análise.",
-  tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
-  tag_suffix = ":") &
-  theme_bw(base_size = 9) &
-  theme(
-    plot.tag.position = c(0, 1),
-    plot.tag = element_text(size = 7, hjust = 0, vjust = -0.2)
-  )
-
-(g7+g8) + plot_annotation(
-  # title = "Figura 1: Histogramas das variáveis em análise.",
-  tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
-  tag_suffix = ":") &
-  theme_bw(base_size = 9) &
-  theme(
-    plot.tag.position = c(0, 1),
-    plot.tag = element_text(size = 7, hjust = 0, vjust = -0.2)
-  )
-
-(g9+g10) + plot_annotation(
-  caption = "Fonte: StatLib - Carnegie Mellon University",
-  tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
-  tag_suffix = ":") &
-  theme_bw(base_size = 9) &
-  theme(
-    plot.tag.position = c(0, 1),
-    plot.tag = element_text(size = 7, hjust = 0, vjust = -0.2)
-  )
-
-
-(g13+g14)/(plot_spacer() + plot_spacer()) +
+g1 + g2 + g3 + g4 + g5 + g6 + g7 + g8 + g9 + g10  +  
+  plot_layout(ncol = 3) + 
   plot_annotation(
-    caption = "Fonte: StatLib - Carnegie Mellon University") & 
-  theme_bw(base_size = 8) &
+    title = "Figura 1: Histogramas das variáveis em análise.",
+    caption = "Fonte: StatLib - Carnegie Mellon University",
+    tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+    tag_suffix = ":") &
+  theme_minimal(base_size = 7) &
   theme(
-    legend.position = "none",
     plot.tag.position = c(0, 1),
-    plot.tag = element_text(size = 8, hjust = 0, vjust = 0)
-  )
+    plot.tag = element_text(size = 5, hjust = 0, vjust = -0.4))
 
 # BoxPlot ----
+{
+## b1 age ----
+b1 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = age)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Unidades constuídas \nantes de 1940",
+    x = "Posição",
+    y = "Proporção antes de 1940"
+  )
+
+## b2 crim ----
+b2 <- dados|>
+  mutate(
+    chas = lvls_revalue(chas, c("Na Margem", "Afastado"))
+  )|>
+  ggplot(aes(x = chas, y = crim)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Índice de Criminalidade",
+    x = "Posição",
+    y = "Índice"
+  )
+
+## b3 dis ----
+b3 <- dados|>
+  mutate( chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = dis)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Distância para cinco \ncentros de emprego.",
+    x = "Posição",
+    y = "Distâncias Ponderadas"
+  ) +
+  scale_y_continuous(
+    labels = scales::number_format(
+      dig.mark = ".",
+      decimal.mark = ","))
+      
+## b4 indus ----
+b4 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = indus)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Negócios não varejistas \npor bairro",
+    x = "Proporção de hectares ocupados",
+    y = "Densidade"
+  )
+
+## b5 lstat ----
+b5 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = lstat)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = 'População de "classe baixa"',
+    x = "Posição",
+    y = "Percentual"
+  )
+
+## b6 medv ----
+b6 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = medv)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Valor médio de residências ocupadas",
+    x = "Posição",
+    y = "Valor médio"
+  )
+
+## b7 nox ----
+b7 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = nox)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Concentração de Óxidos \nNitricos (NO)",
+    x = "Posição",
+    y = "Partes por 10 milhões"
+  ) +
+  scale_y_continuous(
+    labels = scales::number_format(
+      dig.mark = ".",
+      decimal.mark = ","))
+
+## b8 ptratio ----
+b8 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = ptratio)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Aluno/Professor por bairro",
+    x = "Posição",
+    y = "Proporção"
+  ) +
+  scale_y_continuous(
+    labels = scales::number_format(
+      dig.mark = ".",
+      decimal.mark = ","))
+
+## b9 rm ----
+b9 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = rm)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Número médio de cômodos por habitação",
+    x = "Posição",
+    y = "Quantidade"
+  )
+
+## b10 ---- 
+b10 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = tax)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Taxa de imposto predial",
+    x = "Posição",
+    y = "Valor por $10.000"
+  )
+
+b1 + b2 + b3 + b4 + b5 + b6 + b7 + b8 + b9 + b10  +  
+  plot_layout(ncol = 3) + 
+  plot_annotation(
+    title = "Figura 2: BoxPlot das variáveis em análise.",
+    caption = "Fonte: StatLib - Carnegie Mellon University",
+    tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+    tag_suffix = ":") &
+  theme_minimal(base_size = 7) &
+  theme(
+    plot.tag.position = c(0, 1),
+    plot.tag = element_text(size = 5, hjust = 0, vjust = -0.4))
+}
 
 
 # FIM ----
