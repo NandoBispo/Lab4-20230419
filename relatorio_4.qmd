@@ -21,64 +21,433 @@ format:
       include-in-header:
       - text: |
           \usepackage{caption}
-          \captionsetup[table]{name=Tabela} 
+          \usepackage{xcolor}
+          \usepackage{indentfirst}
+          \captionsetup[table]{name=Tabela}
 ---
+          <!-- \usepackage{parskip} -->
+          <!-- \setlenght{\parsident}{1.25cm} -->
+          <!-- \setlenght{\parskip}{1.5cm} -->
+
+```{r pacotes&dados}
+#| echo: false
+#| warning: false
+
+
+# PACOTES ----
+
+if (!require(pacman))
+  install.packages("pacman")
+library(pacman)
+
+pacman::p_load(tidyverse,  janitor, stargazer,  sjmisc, summarytools,
+               kableExtra, moments, ggpubr, formattable, gridExtra, 
+               glue, corrplot, sessioninfo, readxl, writexl, ggthemes,
+               patchwork,  plotly, lmtest, olsrr, gglm, ggplot2,
+               tidymodels, GGally, skimr)
+
+dados <- read.csv("boston.csv")
+
+## Arrumação ----
+dados <- dados|>
+  janitor::clean_names()
+
+dados <- dados|>
+  mutate(
+    chas = forcats::as_factor(chas))
+```
+
 
 # Introdução
 
-A busca por melhor qualidade de vida é um dos principais objetivos de vida das pessoas em geral e a escolha de moradias que proporcionem isso não foge a esse preceito.
+A busca pela moradia própria é o desejo da grande maioria das pessoas, contudo a conquista desse bem nos grandes centros não é tarefa fácil. Levando isso em consideração a procura por imóveis na região metropolitana torna-se uma opção viável economicamente, mesmo havendo penalizações no que diz respeito a distância e congestionamentos.
 
-Com o objetivo de investigar a disposição das pessoas em pagar por imóveis localizados em regiões com maior concentração de ar limpo, imóveis esses pertencentes a região metropolitana de Boston, esta análise visa obter através das técnicas da análise de regressão uma visão sobre essa preferência.
+O objetivo deste relatório é trazer a luz as análises e conclusões acerca da utilização das técnicas de regressão linear a fim de determinar o preço das casas em Boston, baseado nos dados fornecidos pelo conjunto de dados obtido. Neste primeiro momento, em que se utilizará a regressão linear simples, se buscará determinar uma função que descreva a relação entre o Valor Médio dos imóveis e o Índice de Criminalidade.
 
-Composto por 506 observações e 14 variáveis, o conjunto de dados foi publicado no *Jornal of Environmental Economics & Management*, vol.5, 81-102, 1978.
+Composto por 506 observações e 14 variáveis, o conjunto de dados, publicado no *Jornal of Environmental Economics & Management*, vol.5, 81-102, 1978.t, traz inúmeras características que servirão de parâmetros para resolução do seguinte questionamento: O valor médio dos imóveis é influenciado pelas diversas características externas observadas?
+
 
 # Metodologia
 
-
-# Objetivo
-
-O objetivo deste trabalho será determinar, a partir de técnicas de regressão linear, o preço de casas em Boston com base nos dados fornecidos pelo banco de dados análisado.
-
 ## Sobre o conjunto de dados
 
-Os dados de preços de 506 casas em Boston publicados em Harrison, D. and Rubinfeld, D.L. *'Hedonic prices and the demand for clean air'*, J. Environ. Economics & Management, vol.5, 81-102, 1978.  
-Os dados podem ser acessados na plataforma para aprendizado de ciência de dados [Kaggle](https://www.kaggle.com/datasets/fedesoriano/the-boston-houseprice-data) através do link:
+Os dados de preços de 506 casas em Boston, publicados em Harrison, D. and Rubinfeld, D.L. *'Hedonic prices and the demand for clean air'*, J. Environ. Economics & Management, vol.5, 81-102, 1978, podem ser acessados na plataforma para aprendizado de ciência de dados [Kaggle](https://www.kaggle.com/datasets/fedesoriano/the-boston-houseprice-data) através do link:
 
 <https://www.kaggle.com/datasets/fedesoriano/the-boston-houseprice-data>.  
 
-### Variáveis
+### Variáveis a serem analisadas
 
 1. CRIM: Índice de criminalidade per capita por bairro.    
 2. ZN: Proporção de terreno residencial zoneada para lotes acima de 25.000 sq.ft. 
 3. INDUS: Proporção de hectares de negócios não varejistas por bairro.  
 4. CHAS: Margem do rio Charles (1 se o trecho margeia o rio; 0 caso contrário).  
-5. NOX: Concentração de óxidos nítricos (partes por 10 milhões. [partes/10M].  
+5. NOX: Concentração de óxidos nítricos (partes por 10 milhões).  
 6. RM: Número médio de cômodos por habitação.  
 7. AGE: Proporção de unidades próprias construídas antes de 1940.  
 8. DIS: Distâncias ponderadas para cinco centros de emprego de Boston.  
 9. RAD: Índice de acessibilidade às rodovias radiais.  
-10. TAX: Valor total do imposto predial por $10.000 [$10k].  
-11. PTRATIO: proporção aluno-professor por bairro.  
+10. TAX: Valor total do imposto predial por $10.000.
+11. PTRATIO: Proporção aluno-professor por bairro.  
 12. B: O resultado da equação $B=1000(Bk - 0,63)^2$ onde $Bk$ é a proporção de negros por bairro.    
 13. LSTAT: % da população de "classe baixa".  
 
-## Análise Descritiva
+# Resultados
+
+## Análise Descritiva dos Dados
+
+Existem variáveis que em virtude da sua natureza e da falta de um dicionário, inviabilizam a interpretação e portanto serão excluídas das análises, sendo estas:
+
+1. ZN: Proporção de terreno residencial zoneada para lotes acima de 25.000 sq.ft.
+2. RAD: Índice de acessibilidade às rodovias radiais. 
+3. B: O resultado da equação $B=1000(Bk - 0,63)^2$ onde $Bk$ é a proporção de negros por bairro.
 
 
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
-```{r}
-# 1 + 1
-```
-
-You can add options to executable code like this 
-
-```{r}
+```{r tab1}
 #| echo: false
-2 * 2
+#| warning: false
+
+summarytools::st_options(lang = "pt")
+
+dados|>
+  select(-b, - rad, -zn)|>
+  summarytools::descr(
+    stats = c("min", "q1", "med", "mean","q3", "max",  "sd", "cv", "Skewness", "Kurtosis"),
+    justify = "c",
+    style = "rmarkdown",
+    transpose = T
+  )|>
+    kbl(
+    caption = "Medidas Resumo dos dados",
+    digits = 2,
+    format.args=list(big.mark=".", decimal.mark=","),
+    align = "c", row.names = T, booktabs = T
+  )|>
+  kable_styling(
+    full_width = F, position = 'center', 
+    latex_options = c("striped", "HOLD_position", "scale_down", "repeat_header")
+  )|>
+  column_spec(1, bold = F
+              # width = "15em", 
+              )|>
+  footnote(
+    general = "StatLib - Carnegie Mellon University",
+    general_title = "Fonte:",
+    footnote_as_chunk = T
+    )|>
+  kableExtra::add_footnote(c("Legenda:"), notation = "none")|>
+  kableExtra::add_footnote(c(
+    "age: Proporção de unidades próprias construídas antes de 1940.",
+    "crim: Índice de criminalidade per capita por bairro.",
+    "dis: Distâncias ponderadas para cinco centros de emprego de Boston.",
+    "indus: Proporção de hectares de negócios não varejistas por bairro.",
+    'lstat: Percentual da população de "classe baixa".',
+    "mdev: Valor médio de residências ocupadas pelo proprietário.",
+    "nox: Concentração de óxidos nítricos (partes por 10 milhões).",
+    "ptratio: Proporção aluno-professor por bairro.",
+    "rm: Número médio de cômodos por habitação.",
+    "tax: Valor total do imposto predial por $10.000."), 
+  notation = "none"
+  )|>
+  kable_material()
+
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+Analisando a Tabela 1 é possível identificar a presença de pontos atípicos para a variável **crim**, sendo esta a variável que mais se destaca pelos indicadores obtidos, gerando assim uma grande variabilidade, confirmada pelo Coeficiente de Variação - CV, sendo esta medida que avalia a dispersão dos dados em relação a média, além de verificar um elevado Coeficiente de Assimetria Positiva, indicando que a maioria dos dados são menores que a média e um comportamento Leptocúrtico, com base no Coeficiente de Curtose, ou seja, os dados possuem um comportamento mais alongado.
+
+A Figura 1 traz os Histogramas das variáveis a fim de tentar identificar o comportamento das variáveis e uma possível associação a algum modelo de distribuição
+
+```{r fig1:hist}
+#| echo: false
+#| warning: false
+#| fig-height: 2
+
+# Histograma ----
+
+g1 <- dados|>
+  ggplot() +
+  aes(x = age) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 40,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Unidades constuídas \nantes de 1940",
+    x = "Proporção",
+    y = "Densidade"
+  )
+
+g2 <- dados|>
+  ggplot() +
+  aes(x = crim) +
+  geom_histogram(
+    aes(y = ..density..),
+    fill = "lightblue",
+    colour = "darkblue",
+    bins = 45
+    ) +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Índice de Criminalidade",
+    x = "Índice",
+    y = "Densidade"
+  )
+
+g3 <- dados|>
+  ggplot() +
+  aes(x = dis) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 45,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_x_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Distância para cinco \ncentros de emprego.",
+    x = "Distâncias Ponderadas",
+    y = "Densidade"
+  )
+
+g4 <- dados|>
+  ggplot() +
+  aes(x = indus) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 40,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Negócios não varejistas \npor bairro",
+    x = "Proporção de hectares ocupados",
+    y = "Densidade"
+  )
+
+g5 <- dados|>
+  ggplot() +
+  aes(x = lstat) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 40,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = 'População de "classe baixa"',
+    x = 'Percentual',
+    y = "Densidade"
+  )
+
+g6 <- dados|>
+  ggplot() +
+  aes(x = medv) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 35,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Valor médio de residências ocupadas",
+    x = "Valor Médio",
+    y = "Densidade"
+  )
+
+g7 <- dados|>
+  ggplot() +
+  aes(x = nox) +
+  geom_histogram(
+    aes(y = ..density..),
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Concentração de Óxidos \nNitricos (NO)",
+    x = "Partes por 10 milhões",
+    y = "Densidade"
+  )
+
+g8 <- dados|>
+  ggplot() +
+  aes(x = ptratio) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 30,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_x_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Aluno/Professor por bairro",
+    x = "Proporção",
+    y = "Densidade"
+  )
+
+g9 <- dados|>
+  ggplot() +
+  aes(x = rm) +
+  geom_histogram(
+    aes(y = ..density..),
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Número médio de cômodos por \nhabitação",
+    x = "Quantidade",
+    y = "Densidade"
+  )
+
+g10 <- dados|>
+  ggplot() +
+  aes(x = tax) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 35,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Valor total do imposto predial",
+    x = "Valor por $10.000",
+    y = "Densidade"
+  )
+
+(g1+g2) + plot_annotation(
+  title = "Figura 1: Histogramas das variáveis em análise.",
+  tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+  tag_suffix = ":") &
+  theme_bw(base_size = 8) &
+  theme(
+    plot.tag.position = c(0, 1),
+    plot.tag = element_text(size = 7, hjust = 0, vjust = -0.3)
+  )
+
+(g3+g4) + plot_annotation(
+  tag_levels = c("C", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+  tag_suffix = ":") &
+  theme_bw(base_size = 8) &
+  theme(
+    plot.tag.position = c(0, 1),
+    plot.tag = element_text(size = 7, hjust = 0, vjust = -0.4)
+  )
+
+(g5+g6) + plot_annotation(
+  tag_levels = c("E", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+  tag_suffix = ":") &
+  theme_bw(base_size = 8) &
+  theme(
+    plot.tag.position = c(0, 1),
+    plot.tag = element_text(size = 7, hjust = 0, vjust = -0.4)
+  )
+
+(g7+g8) + plot_annotation(
+  tag_levels = c("G", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+  tag_suffix = ":") &
+  theme_bw(base_size = 9) &
+  theme(
+    plot.tag.position = c(0, 1),
+    plot.tag = element_text(size = 7, hjust = 0, vjust = -0.2)
+  )
+
+(g9+g10) + plot_annotation(
+  caption = "Fonte: StatLib - Carnegie Mellon University",
+  tag_levels = c("I", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+  tag_suffix = ":") &
+  theme_bw(base_size = 9) &
+  theme(
+    plot.tag.position = c(0, 1),
+    plot.tag = element_text(size = 7, hjust = 0, vjust = -0.2)
+  )
+```
+
+
