@@ -60,7 +60,7 @@ dados <- dados|>
 
 A busca pela moradia própria é o desejo da grande maioria das pessoas, contudo a conquista desse bem nos grandes centros não é tarefa fácil. Levando isso em consideração a procura por imóveis na região metropolitana torna-se uma opção viável economicamente, mesmo havendo penalizações no que diz respeito a distância e congestionamentos.
 
-O objetivo deste relatório é trazer a luz as análises e conclusões acerca da utilização das técnicas de regressão linear a fim de determinar o preço das casas em Boston, baseado nos dados fornecidos pelo conjunto de dados obtido. Neste primeiro momento, em que se utilizará a regressão linear simples, se buscará determinar uma função que descreva a relação entre o Valor Médio dos imóveis e o Índice de Criminalidade.
+O objetivo deste relatório é trazer a luz as análises e conclusões acerca da utilização das técnicas de regressão linear a fim de determinar o preço das casas em Boston, baseado nos dados fornecidos pelo conjunto de dados obtido. Neste primeiro momento, em que se utilizará a regressão linear simples, se buscará determinar uma função que descreva a relação entre o Valor Médio dos imóveis e o Percentual da população de "classe baixa".
 
 Composto por 506 observações e 14 variáveis, o conjunto de dados, publicado no *Jornal of Environmental Economics & Management*, vol.5, 81-102, 1978.t, traz inúmeras características que servirão de parâmetros para resolução do seguinte questionamento: O valor médio dos imóveis é influenciado pelas diversas características externas observadas?
 
@@ -112,14 +112,20 @@ Existem variáveis que em virtude da sua natureza e da falta de um dicionário, 
 Iniciando a análise das variáveis contidas no conjunto de dados foi construída a Tabela 1 com a sumarização das variáveis em análise, a fim de identificar o comportamento das variáveis por meio das métricas de posição e dispersão.
 </font>
 
-```{r tab1}
+```{r tab1:medidas_resumo}
 #| echo: false
 #| warning: false
 
+# Medidas Resumo ----
 summarytools::st_options(lang = "pt")
 
 dados|>
   select(-b, - rad, -zn)|>
+  rename(
+    "AGE" = age, "CRIM" = crim, "DIS" = dis, "INDUS" = indus,
+    "LSTAT" = lstat, "NOX" = nox, "PTRATIO" = ptratio,
+    "RM" = rm, "TAX" = tax, "MEDV" = medv
+  )|>
   summarytools::descr(
     stats = c("min", "q1", "med", "mean","q3", "max",  "sd", "cv", "Skewness", "Kurtosis"),
     justify = "c",
@@ -145,16 +151,16 @@ dados|>
     )|>
   kableExtra::add_footnote(c("Legenda:"), notation = "none")|>
   kableExtra::add_footnote(c(
-    "age: Proporção de unidades próprias construídas antes de 1940.",
-    "crim: Índice de criminalidade per capita por bairro.",
-    "dis: Distâncias ponderadas para cinco centros de emprego de Boston.",
-    "indus: Proporção de hectares de negócios não varejistas por bairro.",
-    'lstat: Percentual da população de "classe baixa".',
-    "medv: Valor médio de residências ocupadas pelo proprietário.",
-    "nox: Concentração de óxidos nítricos (partes por 10 milhões).",
-    "ptratio: Proporção aluno-professor por bairro.",
-    "rm: Número médio de cômodos por habitação.",
-    "tax: Valor total do imposto predial por $10.000."), 
+    "AGE: Proporção de unidades próprias construídas antes de 1940.",
+    "CRIM: Índice de criminalidade per capita por bairro.",
+    "DIS: Distâncias ponderadas para cinco centros de emprego de Boston.",
+    "INDUS: Proporção de hectares de negócios não varejistas por bairro.",
+    'LSTAT: Percentual da população de "classe baixa".',
+    "MEDV: Valor médio de residências ocupadas pelo proprietário.",
+    "NOX: Concentração de óxidos nítricos (partes por 10 milhões).",
+    "PTRATIO: Proporção aluno-professor por bairro.",
+    "RM: Número médio de cômodos por habitação.",
+    "TAX: Valor total do imposto predial por $10.000."),
   notation = "none"
   )|>
   kable_material()
@@ -429,10 +435,10 @@ g1 + g2 + g3 + g4 + g5 + g6 + g7 + g8 + g9 + g10  +
     caption = "Fonte: StatLib - Carnegie Mellon University",
     tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
     tag_suffix = ":") &
-  theme_minimal(base_size = 7) &
+  theme_minimal(base_size = 7.5) &
   theme(
     plot.tag.position = c(0, 1),
-    plot.tag = element_text(size = 5, hjust = 0, vjust = -0.4))
+    plot.tag = element_text(size = 5.5, hjust = 0, vjust = -0.4))
 }
 ```
 
@@ -562,7 +568,7 @@ b9 <- dados|>
     y = "Quantidade"
   )
 
-## b10 ---- 
+## b10 tax ---- 
 b10 <- dados|>
   mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
   ggplot(aes(x = chas, y = tax)) +
@@ -581,10 +587,10 @@ b1 + b2 + b3 + b4 + b5 + b6 + b7 + b8 + b9 + b10  +
     # theme = theme_minimal(plot.title = element_text(size = 10)),
     tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
     tag_suffix = ":") &
-  theme_minimal(base_size = 7) &
+  theme_minimal(base_size = 7.5) &
   theme(
     plot.tag.position = c(0, 1),
-    plot.tag = element_text(size = 5, hjust = 0, vjust = -0.4))
+    plot.tag = element_text(size = 5.5, hjust = 0, vjust = -0.4))
 }
 
 ```
@@ -593,35 +599,10 @@ Corroborando com a identificação feita com base na Tabela 1, a variável que a
 
 ## Análise Correlacional
 
-Levando em consideração que o objetivo inicial é verificar a influência do Índice de Criminalidade no Valor Médio dos Imóveis localizados na periferia de Boston, Segue a Figura 3 com o diagrama de dispersão, a fim de trazer uma possível relação visual entre as variáveis.
-
+A Figura 3 traz os gráficos de dispersão das variáveis, tendo como variável resposta o Valor Médio dos Imóveis por \$1.000 e as demais variáveis como explicativas, a fim de se identificar a possível existência de correlação entre elas, sendo calculado e descrito o Coeficiente de Correlação de Pearson ($\widehat{\rho}$) de cada gráfico, a fim de se ter numericamente a força da relação entre a variável resposta com as demais variáveis do conjunto de dados.
 
 
 ```{r fig3:Dispersao}
-#| echo: false
-#| warning: false
-
-
-
-dados |>
-  ggplot(aes(
-      y = medv, 
-      x = crim, color = crim)) +
-  geom_point()+
-  labs(
-    title = 'Figura 3: Gráfico de dispersão entre Valor Médio dos Imóveis \ne o Índice de Criminalidade',
-    y = 'Valor Médio (por $1.000)',
-    x = 'Índice de Criminalidade'
-  )+
-  theme_minimal()+
-  theme(legend.position = "none")
-```
-
-
-Analisando a Figura 3 é possível identificar que o **Valor médio dos imóveis** se concentra em regiões em que o **Índice de Criminalidade** é baixo, como esperado, demonstrando uma leve relação negativa. Para auxiliar nessa identificação será calculado o Coeficiente de Correlação de Pearson ($\widehat{\rho}$) medida que avalia o grau da correlação linear entre variáveis, em que se obteve o valor de `r round(cor(dados$medv, dados$crim), 4)` indicando uma fraca porém existente correlação negativa entre as variáveis confirmada através do teste de hipóteses.
-
-
-```{r fig4:Dispersao2}
 #| echo: false
 #| warning: false
 #| fig-height: 8
@@ -630,17 +611,22 @@ Analisando a Figura 3 é possível identificar que o **Valor médio dos imóveis
 # Dispersão ----
 {
   ## d1 age ----
-  d1 <- dados |>
-    ggplot(aes(
-      y = medv, 
-      x = age, color = age)) +
+  d1 <- dados|>
+    ggplot(aes(y = medv, x = age, color = age)) +
     geom_point()+
     labs(
-      title = 'Idade',
-      y = 'Valor Médio',
+      title = "Unidades constuídas antes de \n1940",
+      y = 'Valor Médio (por $1.000)',
       x = 'Proporção antes de 1940'
     )+
-    # geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 5, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
     scale_y_continuous(
       labels = scales::number_format(
         big.mark = ".",
@@ -649,18 +635,23 @@ Analisando a Figura 3 é possível identificar que o **Valor médio dos imóveis
   
   ## d2 crim ----
   d2 <- dados |>
-    # filter(crim<4)|>
     ggplot(aes(
       y = medv, 
       x = crim, color = crim)) +
     geom_point()+
     labs(
-      title = 'Gráfico de dispersão entre Valor Médio \ndos Imóveis e Índice de Criminalidade',
+      title = 'Índice de Criminalidade',
       y = 'Valor Médio (por $1.000)',
-      x = 'Índice de Criminalidade'
+      x = 'Índice'
     )+
-    theme(legend.position = "none")
-    # geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 50, label.y = 50, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)
 
   ## d3 dis ----
   d3 <- dados |>
@@ -669,11 +660,18 @@ Analisando a Figura 3 é possível identificar que o **Valor médio dos imóveis
       x = dis, color = dis)) +
     geom_point()+
     labs(
-      title = 'Distância',
-      y = 'Valor Médio',
+      title = "Distância para cinco centros de \nemprego.",
+      y = 'Valor Médio (por $1.000)',
       x = 'Distâncias Ponderadas'
     )+
-    # geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 9, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
     scale_x_continuous(
       labels = scales::number_format(
         big.mark = ".",
@@ -687,10 +685,18 @@ Analisando a Figura 3 é possível identificar que o **Valor médio dos imóveis
       x = indus, color = indus)) +
     geom_point()+
     labs(
-      title = 'Empresas',
-      y = 'Valor Médio',
+      title = "Negócios não varejistas por \nbairro",
+      y = 'Valor Médio (por $1.000)',
       x = 'Hectares Ocupados'
-    )
+    )+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 1.5, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)
     # geom_smooth(method=lm, se=TRUE)
   
   ## d5 lstat ----
@@ -700,10 +706,18 @@ Analisando a Figura 3 é possível identificar que o **Valor médio dos imóveis
       x = lstat, color = lstat)) +
     geom_point()+
     labs(
-      title = 'Classe',
-      y = 'Valor Médio',
-      x = '% de \"Classe Baixa\"'
-    )
+      title = 'População de "classe baixa"',
+      y = 'Valor Médio (por $1.000)',
+      x = 'Percentual'
+    )+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 25, label.y = 47.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)
 
   ## d6 nox ----
   d6 <- dados |>
@@ -712,11 +726,18 @@ Analisando a Figura 3 é possível identificar que o **Valor médio dos imóveis
       x = nox, color = nox)) +
     geom_point()+
     labs(
-      title = 'Óxidos Nítricos',
-      y = 'Valor Médio',
+      title = "Concentração de Óxidos \nNitricos (NO)",
+      y = 'Valor Médio (por $1.000)',
       x = 'Partes por 10 milhões'
     )+
-    # geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 0.75, label.y = 47.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
     scale_x_continuous(
       labels = scales::number_format(
         big.mark = ".",
@@ -730,11 +751,18 @@ Analisando a Figura 3 é possível identificar que o **Valor médio dos imóveis
       x = ptratio, color = ptratio)) +
     geom_point()+
     labs(
-      title = 'Aluno/Professor',
-      y = 'Valor Médio',
+      title = "Aluno/Professor por bairro",
+      y = 'Valor Médio (por $1.000)',
       x = 'Proporção'
     )+
-    # geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 13, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
     scale_x_continuous(
       labels = scales::number_format(
         big.mark = ".",
@@ -748,10 +776,18 @@ Analisando a Figura 3 é possível identificar que o **Valor médio dos imóveis
       x = rm, color = rm)) +
     geom_point()+
     labs(
-      title = 'Cômodos',
-      y = 'Valor Médio',
+      title = "Número médio de cômodos por \nhabitação",
+      y = 'Valor Médio (por $1.000)',
       x = 'Quantidade'
-    )
+    )+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 3.7, label.y = 47.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)
   
   ## d9 tax ----
   d9 <- dados |>
@@ -759,104 +795,430 @@ Analisando a Figura 3 é possível identificar que o **Valor médio dos imóveis
       x = tax, y = medv, color = tax)) +
     geom_point()+
     labs(
-      title = 'Imposto',
-      y = 'Valor Médio',
+      title = "Taxa de imposto predial",
+      y = 'Valor Médio (por $1.000)',
       x = 'Valor por $10.000'
-    )
+    )+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 200, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)
 
   d1 + d2 + d3 + d4 + d5 + d6 + d7 + d8 + d9 +  
     plot_layout(ncol = 3) + 
     plot_annotation(
-      title = "Figura 4: Relação entre o Valor médio dos imóveis e demais medições",
-      caption = "Fonte: StatLib - Carnegie Mellon University",
+      title = "Figura 3: Relação entre o Valor médio dos imóveis e demais medições",
+      caption = "Fonte: StatLib - Carnegie Mellon University\nValor do Coeficiente de Correlação de Pearson em vermelho",
       tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
       tag_suffix = ":") &
-    theme_minimal(base_size = 7) &
+    theme_minimal(base_size = 7.5) &
     theme(
       legend.position = "none",
       plot.tag.position = c(0, 1),
-      plot.tag = element_text(size = 5, hjust = 0, vjust = -0.4))
+      plot.tag = element_text(size = 5.5, hjust = 0, vjust = -0.4))
 
 }
 ```
 
 
-# ***
+Após análise da Figura 3 é constatado tanto pelo comportamento dos dados quanto pelo valor do coeficiente de correlação que as variáveis que apresentam maior correlação são as variáveis que representam o **Percentual da população de ”classe baixa”** e o **Número médio de cômodos por habitação**, ainda assim segue a Figura 4 com a Reta de Regressão para todas as variáveis.
 
-```{r}
+
+```{r fig4:regressao}
+#| echo: false
+#| warning: false
+#| fig-height: 8
+#| fig-width: 7
+
+# Dispersão ----
+{
+  ## d1 age ----
+  d1 <- dados|>
+    ggplot(aes(y = medv, x = age, color = age)) +
+    geom_point()+
+    labs(
+      title = "Unidades constuídas antes de \n1940",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Proporção antes de 1940'
+    )+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 5, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    scale_y_continuous(
+      labels = scales::number_format(
+        big.mark = ".",
+        decimal.mark = ","
+      ))+
+    geom_smooth(method=lm, se=TRUE)
+  
+  ## d2 crim ----
+  d2 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = crim, color = crim)) +
+    geom_point()+
+    labs(
+      title = 'Índice de Criminalidade',
+      y = 'Valor Médio (por $1.000)',
+      x = 'Índice'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 50, label.y = 50, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)
+
+  ## d3 dis ----
+  d3 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = dis, color = dis)) +
+    geom_point()+
+    labs(
+      title = "Distância para cinco centros de \nemprego.",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Distâncias Ponderadas'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 9, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    scale_x_continuous(
+      labels = scales::number_format(
+        big.mark = ".",
+        decimal.mark = ","
+      ))
+  
+  ## d4 indus ----
+  d4 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = indus, color = indus)) +
+    geom_point()+
+    labs(
+      title = "Negócios não varejistas por \nbairro",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Hectares Ocupados'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 1.5, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)
+    # geom_smooth(method=lm, se=TRUE)
+  
+  ## d5 lstat ----
+  d5 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = lstat, color = lstat)) +
+    geom_point()+
+    labs(
+      title = 'População de "classe baixa"',
+      y = 'Valor Médio (por $1.000)',
+      x = 'Percentual'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 25, label.y = 47.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)
+
+  ## d6 nox ----
+  d6 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = nox, color = nox)) +
+    geom_point()+
+    labs(
+      title = "Concentração de Óxidos \nNitricos (NO)",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Partes por 10 milhões'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 0.75, label.y = 47.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    scale_x_continuous(
+      labels = scales::number_format(
+        big.mark = ".",
+        decimal.mark = ","
+      ))
+  
+  ## d7 ptratio ----
+  d7 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = ptratio, color = ptratio)) +
+    geom_point()+
+    labs(
+      title = "Aluno/Professor por bairro",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Proporção'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 13, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    scale_x_continuous(
+      labels = scales::number_format(
+        big.mark = ".",
+        decimal.mark = ","
+      ))
+  
+  ## d8 rm ----
+  d8 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = rm, color = rm)) +
+    geom_point()+
+    labs(
+      title = "Número médio de cômodos por \nhabitação",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Quantidade'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 3.7, label.y = 47.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)
+  
+  ## d9 tax ----
+  d9 <- dados |>
+    ggplot(aes(
+      x = tax, y = medv, color = tax)) +
+    geom_point()+
+    labs(
+      title = "Taxa de imposto predial",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Valor por $10.000'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 200, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)
+
+  d1 + d2 + d3 + d4 + d5 + d6 + d7 + d8 + d9 +  
+    plot_layout(ncol = 3) + 
+    plot_annotation(
+      title = "Figura 4: Reta de regressão ajustada entre o Valor médio dos imóveis e demais medições",
+      caption = "Fonte: StatLib - Carnegie Mellon University\nValor do Coeficiente de Correlação de Pearson em vermelho",
+      tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+      tag_suffix = ":") &
+    theme_minimal(base_size = 7.5) &
+    theme(
+      legend.position = "none",
+      plot.tag.position = c(0, 1),
+      plot.tag = element_text(size = 5.5, hjust = 0, vjust = -0.4))
+
+}
+```
+
+
+
+<!-- Levando em consideração que o objetivo inicial é verificar a influência do Percentual da população de ”classe baixa” no Valor Médio dos Imóveis localizados na periferia de Boston, Segue a Figura 4 com o diagrama de dispersão, a fim de trazer uma possível relação visual entre as variáveis. -->
+
+
+
+```{r fig4:Dispersao2}
 #| echo: false
 #| warning: false
 
-regcrim <- lm(dados$medv~dados$crim)
-regindus <- lm(dados$medv~dados$indus)
-regchas <- lm(dados$medv~dados$chas)
-regnox <- lm(dados$medv~dados$nox)
-regrm <- lm(dados$medv~dados$rm)
-regage <- lm(dados$medv~dados$age)
-regdis <- lm(dados$medv~dados$dis)
-regtax <- lm(dados$medv~dados$tax)
-regptratio <- lm(dados$medv~dados$ptratio)
-reglstat <- lm(dados$medv~dados$lstat)
 
-resultados <-  cbind(summary(regcrim)$coefficients[1,],summary(regindus)$coefficients[1,],summary(regchas)$coefficients[1,],summary(regnox)$coefficients[1,],summary(regrm)$coefficients[1,],summary(regage)$coefficients[1,],summary(regdis)$coefficients[1,],summary(regtax)$coefficients[1,],summary(regptratio)$coefficients[1,],summary(reglstat)$coefficients[1,])
+# 
+# dados |>
+#   ggplot(aes(
+#       y = medv, 
+#       x = crim, color = crim)) +
+#   geom_point()+
+#   labs(
+#     title = 'Figura 3: Gráfico de dispersão entre Valor Médio dos Imóveis \ne o Índice de Criminalidade',
+#     y = 'Valor Médio (por $1.000)',
+#     x = 'Índice de Criminalidade'
+#   )+
+#   theme_minimal()+
+#   theme(legend.position = "none")
+```
 
+
+Analisando a Figura 4 é possível identificar que o **Valor médio dos imóveis** se concentra em regiões em que o **Percentual da população de “classe baixa”** (Sub.Fig E) é baixo, como esperado, demonstrando uma relação linear negativa com um Coeficiente de Correlação de Pearson ($\widehat{\rho}$) de `r round(cor(dados$medv, dados$lstat), 4)` corroborando com a existência da correlação negativa entre as variáveis confirmada através do teste de hipóteses.
+
+
+```{r ajuste_modelo}
+#| echo: false
+#| warning: false
+
+# Ajuste do Modelo ----
+
+mCrim <- lm(dados$medv~dados$crim)
+mIndus <- lm(dados$medv~dados$indus)
+mNox <- lm(dados$medv~dados$nox)
+mRm <- lm(dados$medv~dados$rm)
+mAge <- lm(dados$medv~dados$age)
+mDis <- lm(dados$medv~dados$dis)
+mTax <- lm(dados$medv~dados$tax)
+mPtratio <- lm(dados$medv~dados$ptratio)
+mLstat <- lm(dados$medv~dados$lstat)
+
+# Calculando e armazenando o beta0 e erro padrão0
+resultados <-  cbind(
+  summary(mCrim)$coefficients[1,],
+  summary(mIndus)$coefficients[1,],
+  summary(mNox)$coefficients[1,],
+  summary(mRm)$coefficients[1,],
+  summary(mAge)$coefficients[1,],
+  summary(mDis)$coefficients[1,],
+  summary(mTax)$coefficients[1,],
+  summary(mPtratio)$coefficients[1,],
+  summary(mLstat)$coefficients[1,])
+
+# Removendo testes
 resultados <-  resultados[-c(3,4),]
 
-aux <-  cbind(summary(regcrim)$coefficients[2,],summary(regindus)$coefficients[2,],summary(regchas)$coefficients[2,],summary(regnox)$coefficients[2,],summary(regrm)$coefficients[2,],summary(regage)$coefficients[2,],summary(regdis)$coefficients[2,],summary(regtax)$coefficients[2,],summary(regptratio)$coefficients[2,],summary(reglstat)$coefficients[2,])
+# Calculando e armazenando o beta1 e erro padrão1
+aux <-  cbind(
+  summary(mCrim)$coefficients[2,],
+  summary(mIndus)$coefficients[2,],
+  summary(mNox)$coefficients[2,],
+  summary(mRm)$coefficients[2,],
+  summary(mAge)$coefficients[2,],
+  summary(mDis)$coefficients[2,],
+  summary(mTax)$coefficients[2,],
+  summary(mPtratio)$coefficients[2,],
+  summary(mLstat)$coefficients[2,])
 
+# Mantém apenas beta1 e o erro padrão
 aux <- aux[-c(3,4),]
-resultados <- rbind(resultados,aux)
 
+resultados <- rbind(resultados, aux)
+
+# Função para calcular o p-valor
 lmp <- function (modelobject) {
-    if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
-    f <- summary(modelobject)$fstatistic
-    p <- pf(f[1],f[2],f[3],lower.tail=F)
-    attributes(p) <- NULL
-    return(p)
+  if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+  f <- summary(modelobject)$fstatistic
+  p <- pf(f[1],f[2],f[3],lower.tail=F)
+  attributes(p) <- NULL
+  return(p)
 }
 
+# Calculando e armazenando o p-valor
+aux <- cbind(
+  lmp(mCrim), lmp(mIndus),
+  lmp(mNox), lmp(mRm),
+  lmp(mAge), lmp(mDis),
+  lmp(mTax),lmp(mPtratio),lmp(mLstat))
 
+resultados <- rbind(resultados, aux)
 
-aux <-  cbind(lmp(regcrim),lmp(regindus),lmp(regchas),lmp(regnox),lmp(regrm),lmp(regage),lmp(regdis),lmp(regtax),lmp(regptratio),lmp(reglstat))
+# Calculando e armazenando o Coeficiente de Correlação
+aux <-  cbind(
+  summary(mCrim)$r.squared,
+  summary(mIndus)$r.squared,
+  summary(mNox)$r.squared,
+  summary(mRm)$r.squared,
+  summary(mAge)$r.squared,
+  summary(mDis)$r.squared,
+  summary(mTax)$r.squared,
+  summary(mPtratio)$r.squared,
+  summary(mLstat)$r.squared)
 
-resultados <- rbind(resultados,aux)
+resultados <- rbind(resultados, aux)
 
-aux <-  cbind(summary(regcrim)$r.squared,summary(regindus)$r.squared,summary(regchas)$r.squared,summary(regnox)$r.squared,summary(regrm)$r.squared,summary(regage)$r.squared,summary(regdis)$r.squared,summary(regtax)$r.squared,summary(regptratio)$r.squared,summary(reglstat)$r.squared)
+# Inserindo o nome das variáveis (colunas)
+colnames(resultados) <- c("CRIM", "INDUS", "NOX", "RM", "AGE", "DIS", "TAX", "PTRATIO", "LSTAT")
 
-resultados <- rbind(resultados,aux)
-
-colnames(resultados) <- c("crim", "indus", "chas", "nox", "rm", "age", "dis", "tax", "ptratio", "lstat")
+# Inserindo o nome das linhas
 rownames(resultados) <- c("$\\beta_0$", "$\\sigma_0$", "$\\beta_1$", "$\\sigma_1$", "p-valor", "$\\hat \\rho$")
 
-r1 <-  resultados[,1:7]
-r2 <-  resultados[,8:10]
-
-r1 |>
-     kbl(format = "latex", escape = FALSE,
-      caption = "Valores dos modelos de regressão linear simples.",
-      digits = 3,
-      format.args=list(big.mark=".", decimal.mark=","),
-      align = "c",
-      row.names = T
-    )|>
-    kable_material(c("striped", "hover", "condensed"))|>
-    kable_styling(
-    full_width = F,
-    position = 'center', latex_options = 'HOLD_position'
-    )
-r2 |>
-     kbl(format = "latex", escape = FALSE,
-      digits = 3,
-      format.args=list(big.mark=".", decimal.mark=","),
-      align = "c",
-      row.names = T
-    )|>
-    kable_material(c("striped", "hover", "condensed"))|>
-    kable_styling(
-    full_width = F,
-    position = 'center', latex_options = 'HOLD_position'
-    )
 ```
+
+Após o ajuste dos modelos exibidos na Figura 4, foi elaborada a Tabela 2 com os respectivos valores das regressões calculadas entre valor médio dos imóveis e demais medições.
+
+```{r tab2:ajuste_modelo}
+#| echo: false
+#| warning: false
+
+resultados|>
+  kbl(
+    caption = "Valores dos modelos de regressão linear simples.",
+    format.args=list(big.mark=".", decimal.mark=","),
+    digits = 3, align = "c", row.names = T, booktabs = T,
+    # format = "latex", 
+    escape = FALSE,
+  )|>
+  kable_styling(
+    full_width = F, position = 'center', 
+    latex_options = c("striped", "HOLD_position", "scale_down", "repeat_header")
+  )|>
+  column_spec(1, bold = F
+  )|>
+  footnote(
+    general = "StatLib - Carnegie Mellon University",
+    general_title = "Fonte:",
+    footnote_as_chunk = T
+  )|>
+  kableExtra::add_footnote(c("Legenda:"), notation = "none")|>
+  kableExtra::add_footnote(c(
+    "AGE: Proporção de unidades próprias construídas antes de 1940.",
+    "CRIM: Índice de criminalidade per capita por bairro.",
+    "DIS: Distâncias ponderadas para cinco centros de emprego de Boston.",
+    "INDUS: Proporção de hectares de negócios não varejistas por bairro.",
+    'LSTAT: Percentual da população de "classe baixa".',
+    "NOX: Concentração de óxidos nítricos (partes por 10 milhões).",
+    "PTRATIO: Proporção aluno-professor por bairro.",
+    "RM: Número médio de cômodos por habitação.",
+    "TAX: Valor total do imposto predial por $10.000."),
+    notation = "none"
+  )|>
+  kable_material()
+```
+
+Mesmo com os modelos calculados, se faz necessário a avaliação da bondade dos modelos.
 
 
 ```{r}
@@ -864,12 +1226,12 @@ r2 |>
 #| warning: false
 #| tbl-colum: page
 
-res <- reglstat$residuals
+res <- mLstat$residuals
 
 d1<- dados |>
   ggplot(aes(
     x = res, 
-    y = reglstat$effects)) +
+    y = mLstat$effects)) +
   geom_point(colour="tomato")+
   labs(
     title = '',
@@ -916,15 +1278,14 @@ d1+d2 + plot_annotation(
 Pode-se ainda utilizar um conjunto de testes de diagnóstico para confirmar este novo teste de significância.
 Como:
 
-::: incrementyal
--   Teste de Kolmogorov-Smirnov\
--   Teste de Shapiro-Wilks\
--   Teste de Goldfeld-Quandt\
--   Teste de Breush-Pagan\
--   Teste de Park\
--   Teste F para linearidade\
--   Teste para avaliação da independência dos resíduos\
-:::
+- Teste de Kolmogorov-Smirnov
+- Teste de Shapiro-Wilks
+- Teste de Goldfeld-Quandt
+- Teste de Breush-Pagan
+- Teste de Park
+- Teste F para linearidade
+- Teste para avaliação da independência dos resíduos
+
 
 ##### Teste de Kolmogorov-Smirnov
 
@@ -961,7 +1322,7 @@ Realizado o teste obteve-se um p-valor de aproximadamente `r round(t.sw[[2]][1],
 #| results: false
 #| echo: false
 
-t.gq = gqtest(reglstat)
+t.gq = gqtest(mLstat)
 
 ```
 
@@ -976,7 +1337,7 @@ Realizado o teste obteve-se um p-valor de aproximadamente `r round(t.gq[[5]][1],
 #| results: false
 #| echo: false
 
-t.bp = bptest(reglstat, studentize = FALSE)
+t.bp = bptest(mLstat, studentize = FALSE)
 ```
 
 Esse teste é baseado no ajuste de um modelo de regressão em que a variável dependente é definida pelos resíduos do modelo de interesse.
@@ -1007,7 +1368,7 @@ Por esse teste não se deve rejeitar a hipótese de homocedasticidade, com confi
 #| results: false
 #| echo: false
 m_kmedias <- lm(dados$medv ~ factor(dados$lstat))
-t.fl = anova(reglstat, m_kmedias)
+t.fl = anova(mLstat, m_kmedias)
 ```
 
 O teste da falta de ajuste permite testar formalmente a adequação do ajuste do modelo de regressão.
@@ -1022,7 +1383,7 @@ Realizado o teste obteve-se um valore de p-valor igual a `r round(t.fl[[6]][2],3
 #| eval: true
 #| results: false
 #| echo: false
-t.dw = dwtest(reglstat)
+t.dw = dwtest(mLstat)
 ```
 
 Tendo em vista, o resultado obtido no teste anterior esse teste pode esclarecer ainda mais o ajuste do modelo.   
