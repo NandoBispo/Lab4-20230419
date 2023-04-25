@@ -18,6 +18,7 @@ format:
       fig-pos: "H"
       fig-align: center
       lang: pt-BR
+      fontfamily: libertinus
       include-in-header:
       - text: |
           \usepackage{caption}
@@ -149,20 +150,35 @@ dados|>
     general_title = "Fonte:",
     footnote_as_chunk = T
     )|>
-  kableExtra::add_footnote(c("Legenda:"), notation = "none")|>
-  kableExtra::add_footnote(c(
-    "AGE: Proporção de unidades próprias construídas antes de 1940.",
-    "CRIM: Índice de criminalidade per capita por bairro.",
-    "DIS: Distâncias ponderadas para cinco centros de emprego de Boston.",
-    "INDUS: Proporção de hectares de negócios não varejistas por bairro.",
-    'LSTAT: Percentual da população de "classe baixa".',
-    "MEDV: Valor médio de residências ocupadas pelo proprietário.",
-    "NOX: Concentração de óxidos nítricos (partes por 10 milhões).",
-    "PTRATIO: Proporção aluno-professor por bairro.",
-    "RM: Número médio de cômodos por habitação.",
-    "TAX: Valor total do imposto predial por $10.000."),
-  notation = "none"
-  )|>
+  footnote(
+    number = c(
+      "AGE: Proporção de unidades próprias construídas antes de 1940.",
+      "CRIM: Índice de criminalidade per capita por bairro.",
+      "DIS: Distâncias ponderadas para cinco centros de emprego de Boston.",
+      "INDUS: Proporção de hectares de negócios não varejistas por bairro.",
+      'LSTAT: Percentual da população de "classe baixa".',
+      "MEDV: Valor médio de residências ocupadas pelo proprietário.",
+      "NOX: Concentração de óxidos nítricos (partes por 10 milhões).",
+      "PTRATIO: Proporção aluno-professor por bairro.",
+      "RM: Número médio de cômodos por habitação.",
+      "TAX: Valor total do imposto predial por $10.000."),
+    number_title = "Legenda:",
+    footnote_as_chunk = F
+    )|>
+  # kableExtra::add_footnote(c("Legenda:"), notation = "none")|>
+  # kableExtra::add_footnote(c(
+  #   "AGE: Proporção de unidades próprias construídas antes de 1940.",
+  #   "CRIM: Índice de criminalidade per capita por bairro.",
+  #   "DIS: Distâncias ponderadas para cinco centros de emprego de Boston.",
+  #   "INDUS: Proporção de hectares de negócios não varejistas por bairro.",
+  #   'LSTAT: Percentual da população de "classe baixa".',
+  #   "MEDV: Valor médio de residências ocupadas pelo proprietário.",
+  #   "NOX: Concentração de óxidos nítricos (partes por 10 milhões).",
+  #   "PTRATIO: Proporção aluno-professor por bairro.",
+  #   "RM: Número médio de cômodos por habitação.",
+  #   "TAX: Valor total do imposto predial por $10.000."),
+  # notation = "none"
+  # )|>
   kable_material()
 
 ```
