@@ -8,13 +8,14 @@ pacman::p_load(tidyverse,  janitor, stargazer,  sjmisc, summarytools,
                kableExtra, moments, ggpubr, formattable, gridExtra, 
                glue, corrplot, sessioninfo, readxl, writexl, ggthemes,
                patchwork,  plotly, lmtest, olsrr, gglm, ggplot2,
-               tidymodels, GGally, skimr, qqplotr)
+               tidymodels, GGally, skimr, qqplotr, performance)
 
 ## Identificação dos pacotes ----
 # - tidyverse
 # - janitor: Pacote para arrumação do conjunto dos dados e padronizar os nomes das variáveis com o comando "janitor::clean_names()"
 # - skimr: Pacote que gera um mini relatório dos dados e identifica dados faltantes como comando "skimr::skim()".
 # - qqplotr: Pacote que gera gráficos qq
+# performance::check_model gera gráficos de análise de residuos para MRLS
 
 # VERSIONAMENTO ----
 # https://curso-r.githud.io/zen-do-r/git-githud.html
@@ -37,7 +38,121 @@ dados|> names()
 
 dados <- dados|>
   mutate(
-    chas = forcats::as_factor(chas))
+    chas = forcats::as_factor(chas),
+    rad = forcats::as_factor(rad)
+    )
+
+## Tabela de Freq. VAs Categóricas ----
+
+summarytools::st_options(freq.report.nas = F, headings = F)
+# summarytools::st_options()
+
+dados|>
+  select(rad)|>
+  summarytools::freq(
+    plain.ascii = FALSE,
+    style = "rmarkdown",
+    round.digits = 2,
+    # report.nas = F,
+    # headings = F
+    # order = "freq" #ordena pela frequencia
+  )|> names()
+kbl(
+  caption = "Distribuição de Freqência do Índice de Acessibilidade às Rodovias",
+  digits = 3,
+  format.args=list(big.mark=".", decimal.mark=","),
+  align = "c", row.names = T, booktabs = F
+  # col.names = c("Freq", "%")
+)|>
+  kable_styling(
+    full_width = F, position = 'center',
+    latex_options = c("striped", "HOLD_position", "scale_down", "repeat_header")
+  )|>
+  column_spec(1, bold = T
+  )
+
+# scales::number(accuracy = 0.0001, big.mark = ".", decimal.mark = ",")
+
+## Gráfico VAs Categóricas ----
+# p1 <- 
+  dados|>
+  ggplot(aes(x = rad, y = after_stat(count)/sum(after_stat(count))))+
+  geom_bar(fill = "darkblue")+ 
+  theme_minimal()+
+  geom_text(
+    aes(
+      label = scales::percent((after_stat(count))/sum(after_stat(count)), big.mark = ".", decimal.mark = ","),
+      y = after_stat(count)/sum(after_stat(count))),
+    stat = "count", vjust = 0.4, size = 3.2, 
+    angle = 90, color = "white", hjust = 1,
+  ) +
+  labs(
+    title = "Índice de Acessibilidade às Rodovias",
+    x = "Índice",
+    y = "Frequência Relativa"
+  )+scale_y_continuous(labels = scales::percent)+
+  scale_x_discrete(limits = c(1:25))
+  # scale_x_continuous(limits = c(1:25))
+
+
+# p1/gridExtra::tableGrob(dados|>
+#   select(rad)|>
+#   summarytools::freq(
+#     plain.ascii = FALSE,
+#     # style = "rmarkdown",
+#     round.digits = 2,
+#     report.nas = F,
+#     headings = F
+#     # order = "freq" #ordena pela frequencia
+#   ), cols = colnames(c(1:3)), digits(2)
+#   )
+
+
+#dados|>
+#   ggplot(aes(x = rad, y = after_stat(count)/sum(after_stat(count))))+
+#   geom_bar(fill = "darkblue")+ 
+#   geom_text(
+#     aes(
+#       label = scales::percent((after_stat(count))/sum(after_stat(count)))|>scales::number(accuracy = 0.0001, big.mark = ".", decimal.mark = ","),
+#       y = after_stat(count)/sum(after_stat(count))),
+#     stat = "count", vjust = -0.2, size = 2
+#   ) +
+#   labs(
+#     title = "Índice de Acessibilidade às Rodovias",
+#     x = "Índice",
+#     y = "Frequência"
+#   )+
+#   scale_y_continuous(labels = scales::percent)+
+#   theme_minimal()+
+#   theme(
+#     legend.position = "none", title = element_text(size = 7.5))
+
+
+p2 <- dados %>% 
+  count(chas) %>%
+  mutate(
+    # chas = forcats::fct_reorder(sex, n),
+    tipo = case_when(
+      chas == "0" ~ "Não Margeiam o rio",
+      chas == "1" ~ "Margeiam o rio"),
+    pct = round(prop.table(n)*100, 2), 
+    rotulo = glue::glue('{tipo}\n{n} ({pct}%)')) %>% 
+  ggpubr::ggdonutchart(., "pct", 
+                       label = "rotulo", lab.pos = "out",
+                       lab.font = c(4, "plain", "black"),
+                       fill = "chas",  color = "white",
+                       palette = c("darkblue", "skyblue"))+
+                       # palette = c("#FC4E07", "#00AFBB"))+
+  labs(
+    title = "Figura 2: Imóveis que margeiam o Rio Charles"
+    # x = "Sexo", y = "Frequência"
+  )+
+  theme(
+    legend.position = "none", title = element_text(size = 10)
+    # axis.title = element_text(hjust = 0)
+  )
+
+p1 + p2 + plot_layout(nrow = 2, widths = 3)
 
 # Sem necessidade
 # dados <- dados|>
@@ -49,6 +164,9 @@ dados|>skimr::skim() # Verificação de dados faltantes.
 
 
 dplyr::glimpse(dados)
+
+
+
 
 # AED ----
 
@@ -571,8 +689,8 @@ b1 + b2 + b3 + b4 + b5 + b6 + b7 + b8 + b9 + b10  +
 {
   ## d1 age ----
   d1 <- dados|>
-    ggplot(aes(y = medv, x = age, color = age)) +
-    geom_point()+
+    ggplot(aes(y = medv, x = age)) +
+    geom_point(color = "#234B6E")+
     labs(
       title = "Unidades constuídas antes de \n1940",
       y = 'Valor Médio (por $1.000)',
@@ -606,7 +724,7 @@ b1 + b2 + b3 + b4 + b5 + b6 + b7 + b8 + b9 + b10  +
       x = 'Índice'
     )+
     ggpubr::stat_cor(
-      aes(label = ..r.label..),
+      aes(label = ..rr.label..),
       cor.coef.name = c("rho"),
       label.sep = "; ", geom = "text",
       color="red", method = "pearson", 
@@ -784,7 +902,7 @@ b1 + b2 + b3 + b4 + b5 + b6 + b7 + b8 + b9 + b10  +
   
 }
 
-# Correlação ----
+# Correlação 1 ----
 
 cor.test(dados$medv, dados$crim)
 
@@ -793,11 +911,11 @@ dados %>%
   cor() %>% corrplot(method = "circle", type = "lower")
 
 # Ajuste do modelo ----
-(mFit <- lm(medv~crim, data = dados))
+(mFit <- lm(medv~lstat, data = dados))
 
-(lm(medv~crim - 1, data = dados)) # Removendo beta0 - intercepto
+(lm(medv~lstat - 1, data = dados)) # Removendo beta0 - intercepto
 
-(lm(medv~crim, data = dados))
+(lm(medv~lstat, data = dados))
 
 lm(medv ~ crim + indus + nox + rm + age + dis + tax + ptratio + lstat, data = dados)
 
@@ -807,24 +925,114 @@ summary(mFit)
 
 mFit$coefficients[1]
 
-dados_mFit_resid <- broom::augment(mFit)
-dados_mFit_resid
+
+# Correlação 2----
+corCrim <- round(cor(dados$medv, dados$crim), 4)
+corZn <- round(cor(dados$medv, dados$zn), 4)
+corIndus <- round(cor(dados$medv, dados$indus), 4)
+corNox <- round(cor(dados$medv, dados$nox), 4)
+corRm <- round(cor(dados$medv, dados$rm), 4)
+corAge <- round(cor(dados$medv, dados$age), 4)
+corDis <- round(cor(dados$medv, dados$dis), 4)
+corTax <- round(cor(dados$medv, dados$tax), 4)
+corPtratio <- round(cor(dados$medv, dados$ptratio), 4)
+corB <- round(cor(dados$medv, dados$b), 4)
+corLstat <- round(cor(dados$medv, dados$lstat), 4)
+
+# Cor Test
+cortestCrim <- stats::cor.test(dados$medv, dados$crim)
+cortestZn <- stats::cor.test(dados$medv, dados$zn)
+cortestIndus <- stats::cor.test(dados$medv, dados$indus)
+cortestNox <- stats::cor.test(dados$medv, dados$nox)
+cortestRm <- stats::cor.test(dados$medv, dados$rm)
+cortestAge <- stats::cor.test(dados$medv, dados$age)
+cortestDis <- stats::cor.test(dados$medv, dados$dis)
+cortestTax <- stats::cor.test(dados$medv, dados$tax)
+cortestPtratio <- stats::cor.test(dados$medv, dados$ptratio)
+cortestB <- stats::cor.test(dados$medv, dados$b)
+cortestLstat <- stats::cor.test(dados$medv, dados$lstat)
+
+# Estatística t
+resultados <- rbind(cortestCrim$statistic, 
+           cortestZn$statistic, 
+           cortestIndus$statistic,
+            cortestNox$statistic,
+            cortestRm$statistic,
+            cortestAge$statistic,
+            cortestDis$statistic,
+            cortestTax$statistic,
+            cortestPtratio$statistic,
+            cortestB$statistic,
+            cortestLstat$statistic)
+
+# p-valor
+aux <- rbind(cortestCrim$p.value,
+cortestZn$p.value,
+cortestIndus$p.value,
+cortestNox$p.value,
+cortestRm$p.value,
+cortestAge$p.value,
+cortestDis$p.value,
+cortestTax$p.value,
+cortestPtratio$p.value,
+cortestB$p.value,
+cortestLstat$p.value)
+
+# aux <- rbind(cortestCrim$p.value|>round(5),
+# cortestZn$p.value|>round(5),
+# cortestIndus$p.value|>round(5),
+# cortestNox$p.value|>round(5),
+# cortestRm$p.value|>round(5),
+# cortestAge$p.value|>round(5),
+# cortestDis$p.value|>round(5),
+# cortestTax$p.value|>round(5),
+# cortestPtratio$p.value|>round(5),
+# cortestB$p.value|>round(5),
+# cortestLstat$p.value|>round(5))
 
 
-lm(medv~lstat, data = dados) %>% 
-broom::augment() %>% 
-  ggplot() + 
-  geom_point(aes(x = .fitted, y = .resid, color = .resid)) +
-  geom_hline(yintercept = 0) +
-  labs(
-    x = "Valor Médio Ajustado",
-    y = "Resíduoss",
-    title = "Gráfico de Resíduos contra Valor Médio"
-  )+
-  theme(legend.position = "none")
+resultados <- cbind(resultados, aux)
+
+# IC
+aux <- rbind(cortestCrim$conf.int[1:2],
+             cortestZn$conf.int[1:2],
+             cortestIndus$conf.int[1:2],
+             cortestNox$conf.int[1:2],
+             cortestRm$conf.int[1:2],
+             cortestAge$conf.int[1:2],
+             cortestDis$conf.int[1:2],
+             cortestTax$conf.int[1:2],
+             cortestPtratio$conf.int[1:2],
+             cortestB$conf.int[1:2],
+             cortestLstat$conf.int[1:2])
+
+resultados <- cbind(resultados, aux)
+
+rownames(resultados) <- c("Índice Criminalidade", "Prop. Terreno Zoneado", "Área Industrial", "Índice Oxido Nítrico", "N° Cômodos", "Idade do Imóvel", "Dist. Empregos", "Imposto Propriedade", "Prop. Prof.-Aluno", "Prop. Negros/bairro", "Pop. Classe Baixa")
+colnames(resultados) <- c("t", "p-valor", "LI", "LS")
+
+resultados|>
+  kbl(
+    caption = "Teste de Hipótese para Correlação",
+    digits = 5,
+    format.args=list(big.mark=".", decimal.mark=","),
+    align = "c", row.names = T, booktabs = T
+  )|>
+  kable_styling(
+    full_width = F, position = 'center', 
+    latex_options = c("striped", "HOLD_position", "repeat_header")
+  )|>
+  column_spec(1, bold = T
+  )|>
+  footnote(
+    general = "Teste realizado com 5% de significância",
+    general_title = "Nota:",
+    footnote_as_chunk = T
+  )|>
+  kable_material()
 
 
-# Ajuste do Modelo ----
+# 1. Ajuste do Modelo ----
 
 mCrim <- lm(dados$medv~dados$crim)
 mIndus <- lm(dados$medv~dados$indus)
@@ -918,7 +1126,7 @@ resultados|>
     full_width = F, position = 'center', 
     latex_options = c("striped", "HOLD_position", "scale_down", "repeat_header")
   )|>
-  column_spec(1, bold = F
+  column_spec(1, bold = T
   )|>
   footnote(
     general = "StatLib - Carnegie Mellon University",
@@ -944,6 +1152,299 @@ resultados|>
 
 # ----
 
+# 2. Ajuste do Modelo 2 ----
+
+mCrim <- lm(dados$medv~dados$crim)
+mIndus <- lm(dados$medv~dados$indus)
+mNox <- lm(dados$medv~dados$nox)
+mRm <- lm(dados$medv~dados$rm)
+mAge <- lm(dados$medv~dados$age)
+mDis <- lm(dados$medv~dados$dis)
+mTax <- lm(dados$medv~dados$tax)
+mPtratio <- lm(dados$medv~dados$ptratio)
+mLstat <- lm(dados$medv~dados$lstat)
+mZn <- lm(dados$medv~dados$zn)
+mB <- lm(dados$medv~dados$b)
+
+# Calculando e armazenando o beta0 e erro padrão0
+resultados <-  rbind(
+  summary(mCrim)$coefficients[1,],
+  summary(mIndus)$coefficients[1,],
+  summary(mNox)$coefficients[1,],
+  summary(mRm)$coefficients[1,],
+  summary(mAge)$coefficients[1,],
+  summary(mDis)$coefficients[1,],
+  summary(mTax)$coefficients[1,],
+  summary(mPtratio)$coefficients[1,],
+  summary(mLstat)$coefficients[1,],
+  summary(mZn)$coefficients[1,],
+  summary(mB)$coefficients[1,])
+
+# Removendo testes
+resultados <-  resultados[, -c(3,4)]
+
+# Calculando e armazenando o beta1 e erro padrão1
+aux <-  rbind(
+  summary(mCrim)$coefficients[2,],
+  summary(mIndus)$coefficients[2,],
+  summary(mNox)$coefficients[2,],
+  summary(mRm)$coefficients[2,],
+  summary(mAge)$coefficients[2,],
+  summary(mDis)$coefficients[2,],
+  summary(mTax)$coefficients[2,],
+  summary(mPtratio)$coefficients[2,],
+  summary(mLstat)$coefficients[2,],
+  summary(mZn)$coefficients[2,],
+  summary(mB)$coefficients[2,])
+
+# Mantém apenas beta1 e o erro padrão
+aux <- aux[, -c(3,4)]
+
+resultados <- cbind(resultados, aux)
+
+# Função para calcular o p-valor
+lmp <- function (modelobject) {
+  if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+  f <- summary(modelobject)$fstatistic
+  p <- pf(f[1],f[2],f[3],lower.tail=F)
+  attributes(p) <- NULL
+  return(p)
+}
+
+# Calculando e armazenando o p-valor
+aux <- rbind(
+  lmp(mCrim), lmp(mIndus),
+  lmp(mNox), lmp(mRm), lmp(mAge), 
+  lmp(mDis), lmp(mTax), lmp(mPtratio),
+  lmp(mLstat), lmp(mZn),lmp(mB)
+)
+
+resultados <- cbind(resultados, aux)
+
+# Calculando e armazenando o Coeficiente de Correlação
+aux <-  rbind(
+  summary(mCrim)$r.squared,
+  summary(mIndus)$r.squared,
+  summary(mNox)$r.squared,
+  summary(mRm)$r.squared,
+  summary(mAge)$r.squared,
+  summary(mDis)$r.squared,
+  summary(mTax)$r.squared,
+  summary(mPtratio)$r.squared,
+  summary(mLstat)$r.squared,
+  summary(mZn)$r.squared,
+  summary(mB)$r.squared)
+
+resultados <- cbind(resultados, aux)
+
+# Inserindo o nome das variáveis (colunas)
+rownames(resultados) <- c("Índice Criminalidade", "Área Industrial", "Índice Oxido Nítrico", "N° Cômodos", "Idade do Imóvel", "Dist. Empregos", "Imposto Propriedade", "Prop. Prof.-Aluno", "Pop. Classe Baixa", "Prop. Terreno Zoneado", "Prop. Negros/bairro")
+
+# "Valor do Imóvel" = medv, "Acessibilidade Rodovias" = rad,  = zn,  = b
+
+# Inserindo o nome das linhas
+colnames(resultados) <- c("$\\beta_0$", "$\\sigma_0$", "$\\beta_1$", "$\\sigma_1$", "p-valor", "$R^2$")
+
+
+# 3. Ajuste do Modelo ----
+
+mCrim <- lm(dados$medv~dados$crim)
+mIndus <- lm(dados$medv~dados$indus)
+mNox <- lm(dados$medv~dados$nox)
+mRm <- lm(dados$medv~dados$rm)
+mAge <- lm(dados$medv~dados$age)
+mDis <- lm(dados$medv~dados$dis)
+mTax <- lm(dados$medv~dados$tax)
+mPtratio <- lm(dados$medv~dados$ptratio)
+mLstat <- lm(dados$medv~dados$lstat)
+mZn <- lm(dados$medv~dados$zn)
+mB <- lm(dados$medv~dados$b)
+
+# Calculando e armazenando o beta0 e erro padrão0
+resultados <-  rbind(
+  summary(mCrim)$coefficients[1,],
+  summary(mIndus)$coefficients[1,],
+  summary(mNox)$coefficients[1,],
+  summary(mRm)$coefficients[1,],
+  summary(mAge)$coefficients[1,],
+  summary(mDis)$coefficients[1,],
+  summary(mTax)$coefficients[1,],
+  summary(mPtratio)$coefficients[1,],
+  summary(mLstat)$coefficients[1,],
+  summary(mZn)$coefficients[1,],
+  summary(mB)$coefficients[1,])|>
+  # format(big.mark = ".", decimal.mark = ",", digits = 4, scientific = F)|>
+  round(4)
+
+# options(big.mark = ".", decimal.mark = ",")
+
+# Removendo testes
+resultados <-  resultados[, -c(3,4)]
+
+resultados <- glue::glue("{resultados[,1]}\n({resultados[,2]})")
+
+
+# scales::number(accuracy = 0.0001, big.mark = ".", decimal.mark = ",")
+
+
+# Calculando e armazenando o beta1 e erro padrão1
+aux <-  rbind(
+  summary(mCrim)$coefficients[2,],
+  summary(mIndus)$coefficients[2,],
+  summary(mNox)$coefficients[2,],
+  summary(mRm)$coefficients[2,],
+  summary(mAge)$coefficients[2,],
+  summary(mDis)$coefficients[2,],
+  summary(mTax)$coefficients[2,],
+  summary(mPtratio)$coefficients[2,],
+  summary(mLstat)$coefficients[2,],
+  summary(mZn)$coefficients[2,],
+  summary(mB)$coefficients[2,])|>round(4)
+
+# Mantém apenas beta1 e o erro padrão
+aux <- aux[, -c(3,4)]
+
+aux <- glue::glue("{aux[,1]}\n({aux[,2]})")
+
+resultados <- cbind(resultados, aux)
+
+# Função para calcular o p-valor
+lmp <- function (modelobject) {
+  if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+  f <- summary(modelobject)$fstatistic
+  p <- pf(f[1],f[2],f[3],lower.tail=F)
+  attributes(p) <- NULL
+  return(p)
+}
+
+# Calculando e armazenando o p-valor
+aux <- rbind(
+  lmp(mCrim), lmp(mIndus),
+  lmp(mNox), lmp(mRm), lmp(mAge), 
+  lmp(mDis), lmp(mTax), lmp(mPtratio),
+  lmp(mLstat), lmp(mZn),lmp(mB)
+) round(4)
+
+resultados <- cbind(resultados, aux)
+
+# Calculando e armazenando o Coeficiente de Correlação
+aux <-  rbind(
+  summary(mCrim)$r.squared,
+  summary(mIndus)$r.squared,
+  summary(mNox)$r.squared,
+  summary(mRm)$r.squared,
+  summary(mAge)$r.squared,
+  summary(mDis)$r.squared,
+  summary(mTax)$r.squared,
+  summary(mPtratio)$r.squared,
+  summary(mLstat)$r.squared,
+  summary(mZn)$r.squared,
+  summary(mB)$r.squared)|>round(4)
+
+resultados <- cbind(resultados, aux)
+
+resultados|>
+  scales::number(accuracy = 0.0001, big.mark = ".", decimal.mark = ",")
+
+# Inserindo o nome das variáveis (colunas)
+rownames(resultados) <- c("Índice Criminalidade", "Área Industrial", "Índice Oxido Nítrico", "N° Cômodos", "Idade do Imóvel", "Dist. Empregos", "Imposto Propriedade", "Prop. Prof.-Aluno", "Pop. Classe Baixa", "Prop. Terreno Zoneado", "Prop. Negros/bairro")
+
+# "Valor do Imóvel" = medv, "Acessibilidade Rodovias" = rad,  = zn,  = b
+
+# Inserindo o nome das linhas
+colnames(resultados) <- c("$\\beta_0$", "$\\beta_1$", "p-valor", "$\\hat \\rho$")
+# colnames(resultados) <- c("$\\beta_0$", "$\\sigma_0$", "$\\beta_1$", "$\\sigma_1$", "p-valor", "$\\hat \\rho$")
+
+resultados|>
+  kbl(
+    caption = "Valores dos modelos de regressão linear simples.",
+    format.args=list(big.mark=".", decimal.mark=","),
+    digits = 4, align = "c", row.names = T, booktabs = T,
+    # format = "latex", 
+    escape = FALSE,
+  )|>
+  kable_styling(
+    full_width = F, position = 'center', 
+    latex_options = c("striped", "HOLD_position", "scale_down", "repeat_header")
+  )|>
+  column_spec(1, bold = T
+  )|>
+  footnote(
+    general = "StatLib - Carnegie Mellon University",
+    general_title = "Fonte:",
+    footnote_as_chunk = T
+  )
+
+
+
+# Ana. Resíduos ----
+# Gráficos RBase
+par(mfrow = c(2, 2))
+
+plot(mLstat)
+
+par(mfrow = c(1, 1))
+
+# Modelo (Referência)
+# ggplot(data = df_fit_resid) +
+#   geom_point(aes(x = .fitted, y = .resid)) +
+#   geom_hline(yintercept = 0) +
+#   labs(x = "Valores ajustados", y = "Resíduos",
+#        title = "Gráfico de resíduos contra valores ajustados")
+
+dados_mFit_resid <- broom::augment(mFit)
+dplyr::glimpse(dados_mFit_resid)
+
+# Gráfico de Resíduos contra Valor Médio
+dados_mFit_resid|>
+  ggplot(aes(x = .fitted, y = .resid)) + 
+  geom_point(color = "#234B6E") +
+  geom_hline(yintercept = 0, linetype = 2, size = 0.2) +
+  geom_smooth(
+    se = T, color = "tomato", method = 'loess', formula = 'y ~ x')+
+  labs(
+    x = "Valores Médios Ajustados",
+    y = "Resíduos Ordinários",
+    title = "Gráfico de Resíduos vs. Valores Ajustados"
+  )+
+  scale_x_continuous(breaks = seq(0,30,5))+
+  theme_minimal(base_size = 7.5)+
+  theme(legend.position = "none")
+
+# seq(0,20,5)
+
+## Gráfico de normalidade dos resíduos
+dados_mFit_resid %>% 
+  ggplot(aes(sample = .std.resid)) + 
+  qqplotr::stat_qq_band(alpha = 0.3) + # Plota a banda de confiança
+  qqplotr::stat_qq_point(color = "#234B6E") + # Plota os pontos
+  qqplotr::stat_qq_line(linetype = 2, size = 0.2) + # Plota a reta
+  labs(
+    x = "Quantil Teórico",
+    y = "Quantil Amostral",
+    title = "Gráfico quantil-quantil normal"
+  )+
+  scale_x_continuous(breaks = seq(-3,3,1))+
+  theme_minimal(base_size = 7.5)
+
+
+# cores: 234B6E, 023047
+# Teste pacote ----
+pacman::p_load(performance, ggfortify)
+
+performance::check_model(mFit, 
+            check = c("homogeneity", "outliers"))
+
+ggfortify::autoplot(mFit)
+
+autoplot(mFit)
+# ----
+
+
+
+
+
+# AnaRes Jeff
 res <- mLstat$residuals
 
 d1<- dados |>
@@ -953,7 +1454,7 @@ d1<- dados |>
   geom_point(colour="tomato")+
   labs(
     title = '',
-    y = 'Resíduos',
+    y = 'Resíduos Ordinários',
     x = 'Valor Médio Ajustado'
   )+
   scale_y_continuous(
@@ -989,28 +1490,25 @@ d1+d2 + plot_annotation(
 
 ## Gráfico de resíduos padronizads vs preditos ----
 dados_mFit_resid %>% 
-  ggplot() + 
-  geom_point(aes(x = .fitted, y = .std.resid, color = .std.resid)) +
-  geom_hline(yintercept = 0) +
+  ggplot(aes(x = .fitted, y = .std.resid)) + 
+  geom_point(color = "#234B6E") +
+  geom_hline(yintercept = 0, linetype = 2, size = 0.2) +
+  geom_smooth(
+    se = T, color = "tomato", method = 'loess', formula = 'y ~ x')+
   labs(
     x = "Valores Preditos",
-    y = "Resíduos Padronizados",
-    title = "Gráfico de Resíduos Padronizados contra Preditos"
+    y = "$\\sqrt(Resíduos Padronizados)$",
+    title = "Homogeneidade de Variâncias"
   )+
   theme(legend.position = "none" )
 
-## Gráfico de normalidade dos resíduos ----
-dados_mFit_resid %>% 
-  ggplot(aes(sample = .std.resid)) + 
-  qqplotr::stat_qq_band() + # Plota a banda de confiança
-  qqplotr::stat_qq_point() + # Plota os pontos
-  qqplotr::stat_qq_line() + # Plota a reta
-  labs(
-    x = "Quantil Teórico",
-    y = "Quantil Amostral",
-    title = "Gráfico quantil-quantil normal"
-  )
+mLstat$residuals
 
+dados_mFit_resid$.resid
+
+ks.test(res, "pnorm", mean(res), sd(res))
+
+ks.test(dados_mFit_resid$.resid, "pnorm", mean(dados_mFit_resid$.resid), sd(dados_mFit_resid$.resid))
 
 devtools
 

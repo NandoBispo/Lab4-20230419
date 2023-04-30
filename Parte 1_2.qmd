@@ -1,0 +1,1776 @@
+---
+title: "Banco de dados: Boston House Prices"
+author: "Fernado Bispo, Jeff Caponero"
+format:
+    pdf:
+      toc: true
+      toc-title: Sumário
+      colorlinks: true
+      documentclass: report
+      papersize: letter
+      number-sections: false
+      geometry:
+        - top=30mm
+        - left=30mm
+        - right=20mm
+        - bottom=20mm
+        - heightrounded
+      fig-pos: "H"
+      fig-align: center
+      lang: pt-BR
+      fontsize: 12pt
+      include-in-header:
+      - text: |
+          \usepackage{caption}
+          \usepackage{fontspec}
+          \usepackage{xcolor}
+          \usepackage{indentfirst}
+---
+
+```{r pacotes&dados}
+#| echo: false
+#| warning: false
+
+
+# PACOTES ----
+
+if (!require(pacman))
+  install.packages("pacman")
+library(pacman)
+
+pacman::p_load(tidyverse,  janitor, stargazer,  sjmisc, summarytools,
+               kableExtra, moments, ggpubr, formattable, gridExtra, 
+               glue, corrplot, sessioninfo, readxl, writexl, ggthemes,
+               patchwork,  plotly, lmtest, olsrr, gglm, ggplot2,
+               tidymodels, GGally, skimr)
+
+dados <- read.csv("boston.csv")
+
+## Arrumação ----
+dados <- dados|>
+  janitor::clean_names()
+
+dados <- dados|>
+  mutate(
+    chas = forcats::as_factor(chas),
+    rad = forcats::as_factor(rad))
+``` 
+
+<!-- ## Sobre o banco de dados -->
+
+<!-- ### Contexto -->
+
+<!-- Os dados de preços de 506 casas em Boston publicados em HHarrison, D. and Rubinfeld, D.L. 'Hedonic prices and the demand for clean air', J. Environ. Economics & Management, vol.5, 81-102, 1978.   -->
+<!-- Os dados podem ser acessados em:   -->
+<!-- https://www.kaggle.com/datasets/fedesoriano/the-boston-houseprice-data.   -->
+
+<!-- ### Objetivo -->
+
+<!-- O objetivo deste trabalho será determinar, a partir de técnicas de regressão linear, o preço de casas em Boston com base nos dados fornecidos pelo banco de dados análisado. -->
+
+# Introdução
+
+A busca pela moradia própria é o desejo da grande maioria das pessoas, contudo a conquista desse bem nos grandes centros não é tarefa fácil. Levando isso em consideração a procura por imóveis na região metropolitana torna-se uma opção viável economicamente, mesmo havendo penalizações no que diz respeito a distância e congestionamentos.
+
+O objetivo deste relatório é trazer a luz as análises e conclusões acerca da utilização das técnicas de regressão linear a fim de determinar o preço das casas em Boston, baseado nos dados fornecidos pelo conjunto de dados obtido. Neste primeiro momento, em que se utilizará a regressão linear simples, se buscará determinar uma função que descreva a relação entre o Valor Médio dos imóveis e o Percentual da população de "classe baixa".
+
+Composto por 506 observações e 14 variáveis, o conjunto de dados, publicado no *Jornal of Environmental Economics & Management*, vol.5, 81-102, 1978.t, traz inúmeras características que servirão de parâmetros para resolução do seguinte questionamento: O valor médio dos imóveis é influenciado pelas diversas características externas observadas?
+
+# Metodologia
+
+## Sobre o conjunto de dados
+
+Os dados de preços de 506 casas em Boston, publicados em Harrison, D. and Rubinfeld, D.L. [*'Hedonic prices and the demand for clean air'*](https://www.researchgate.net/profile/Daniel-Rubinfeld/publication/4974606_Hedonic_housing_prices_and_the_demand_for_clean_air/links/5c38ce85458515a4c71e3a64/Hedonic-housing-prices-and-the-demand-for-clean-air.pdf), J. Environ. Economics & Management, vol.5, 81-102, 1978.
+
+Usado em Belsley, Kuh & Welsch, [*'Regression diagnostics: identifying influential data and sources of collinearity.*](https://www.wiley.com/en-us/Regression+Diagnostics%3A+Identifying+Influential+Data+and+Sources+of+Collinearity-p-9780471691174) New York: Wiley 1980.
+Os dados podem ser acessados na plataforma para aprendizado de ciência de dados [Kaggle](https://www.kaggle.com/datasets/fedesoriano/the-boston-houseprice-data) através do link:
+
+<https://www.kaggle.com/datasets/fedesoriano/the-boston-houseprice-data>.  
+
+### Variáveis a serem analisadas
+
+A amostra contêm 14 atributos de casas em diferentes locais nos subúrbios de Boston no final dos anos 1970, sendo duas delas classificadas como categóricas e 12 como numéricas. O objetivo é o valor médio das casas em um local (em k$).
+As variáveis presentes no banco de dados são descritas a seguir bem como a forma que estas variáveis serão representadas ao longo deste relatório a fim de facilitar o entendimento:
+
+
+1. CRIM: Índice de criminalidade per capita por bairro.
+Taxa de criminalidade por cidade. Uma vez que o CRIM mede a ameaça ao bem-estar que as famílias percebem em vários bairros da área metropolitana de Boston (assumindo que as taxas de criminalidade são geralmente proporcionais às percepções de perigo das pessoas), ele deve ter um efeito negativo nos valores das moradias. Será representada como **Índice Criminalidade**.
+
+2. ZN: Proporção da área residencial de uma cidade dividida em lotes com mais de 25.000 pés quadrados. Uma vez que tal zoneamento restringe a construção de pequenas casas em lotes, esperamos que o ZS esteja positivamente relacionado aos valores das moradias. Um coeficiente positivo também pode surgir porque o zoneamento representa a exclusividade, a classe social e as comodidades externas de uma comunidade. Será representada como **Prop. Terreno Zoneado**.
+
+3. INDUS: Proporção de hectares de negócios não varejistas por bairro. O INDUS serve como um *proxy* para as externalidades associadas ao ruído da indústria, tráfego intenso e efeitos visuais desagradáveis e, portanto, deve afetar negativamente os valores das habitações. Será representado por **Área Industrial**.
+
+4. CHAS: Variável fictícia categórica que representa imóveis próximos a margem do rio Charles (1 se o trecho margeia o rio; 0 caso contrário). Será representada como **Margem**.
+
+5. NOX: Concentração de óxidos nítricos em pphm (partes por 100 milhões). Será representada como **Índice Oxido Nítrico**.
+
+6. RM: Número médio de quartos em unidades proprietárias. RM representa espaço e, em certo sentido, quantidade de habitação. Deve estar positivamente relacionado com o valor da habitação. Verificou-se que a forma RM² fornece um ajuste melhor do que as formas linear ou logarítnica. Será representada por **N° de Cômodos**.
+
+7. AGE: Proporção de unidades próprias construídas antes de 1940. A idade da unidade geralmente está relacionada à qualidade da estrutura. Será representada por **Idade**
+
+8. DIS: Distâncias ponderadas para cinco centros de emprego  na região de Boston. De acordo com as teorias tradicionais de gradientes de renda da terra urbana, os valores das moradias devem ser maiores perto de locatários de emprego. DIS é inserido na forma logarítmica; o sinal esperado é negativo. Será representada como **Dist. Empregos**.
+
+9. RAD: Variável categórica que representa o índice de acessibilidade às rodovias radiais. O índice de acesso rodoviário foi calculado com base na cidade. Boas variáveis de área de estrada são necessárias para que todas as variáveis de poluição não capturem as vantagens locacionais de estradas. O RAD captura outros tipos de vantagens locacionais além da proximidade do local de trabalho. é inserido na forma logarítmica; o sinal esperado é positivo. Será representada como **Acessibilidade Rodovias**.
+
+10. TAX: Valor total do imposto sobre a propriedade ($/$10,000). Mede o custo dos serviços públicos na comunidade terrestre. As taxas de imposto nominais foram corrigidas pelos índices de avaliação locais para gerar o valor total da taxa de imposto para cada cidade. Diferenças intramunicipais na taxa de avaliação eram difíceis de obter e, portanto, não eram usadas. O coeficiente desta variável deve ser negativo.
+Será representada como **Imposto**.
+
+11. PTRATIO: Proporção aluno-professor por distrito escolar da cidade. Mede os benefícios do setor público em cada cidade. A relação do rácio aluno-professor com a qualidade da escola não é totalmente clara, embora um rácio baixo deva significar que cada aluno recebe mais atenção individual. Esperamos o sinal em PTRATIO seja negativo. Será representada como **Prop. Prof.-Aluno**.
+
+12. B: O resultado da equação $B=1000(Bk - 0,63)^2$ onde $Bk$ é a proporção de negros por bairro. Em níveis baixos a moderados de B, um aumento em B deve ter uma influência negativa no valor da habitação se os negros forem considerados vizinhos indesejáveis pelos brancos. No entanto, a discriminação de mercado significa que os valores das moradias são mais altos em níveis muito altos de B. Espera-se, portanto, uma relação parabólica entre a proporção de negros em um bairro e os valores das moradias. Será representada por **Prop. Negros/bairro**.
+
+13. LSTAT: Proporção da população de "classe baixa", ou seja, com status inferior = 1/2 (proporção de adultos sem nível de ensino médio e proporção de trabalhadores do sexo masculino classificados como trabalhadores). A especificação logarítmica implica que as distinções de status socioeconômico significam mais nas camadas superiores da sociedade do que nas classes inferiores. Será representada por **Pop. Classe Baixa**.
+
+
+### Variável de Saída (Resposta):
+- Valor do Imóvel: Valor médio de residências ocupadas pelo proprietário em US\$1.000 [k\$].  
+
+### Fonte
+
+StatLib - Carnegie Mellon University
+
+
+# Resultados
+
+## Análise Descritiva
+
+De modo a conhecer melhor o banco de dados analisado é importante realizar uma análise descritiva das variáveis que o compõem. Na Tabela 1 pode se ver as medidas de resumo de posição e de tendência central destas variáveis.
+
+```{r}
+#| echo: false
+#| warning: false
+#| 
+
+
+# setwd("~/Dropbox/Estatística/StatisticWorks/Boston_House_Prices")
+# set.seed(7)
+
+```
+
+
+
+```{r tab1:medidas_resumo}
+#| echo: false
+#| warning: false
+
+# Medidas Resumo ----
+summarytools::st_options(lang = "pt")
+
+dados|>
+  # select(-b, - rad, -zn)|>
+  rename(
+    "Idade do Imóvel" = age, "Índice Criminalidade" = crim, "Dist. Empregos" = dis, "Área Industrial" = indus,
+    "Pop. Classe Baixa" = lstat, "Índice Oxido Nítrico" = nox, "Prop. Prof.-Aluno" = ptratio,
+    "N° Cômodos" = rm, "Imposto Propriedade" = tax, "Valor do Imóvel" = medv, "Acessibilidade Rodovias" = rad, "Prop. Terreno Zoneado" = zn, "Prop. Negros/bairro" = b
+  )|>
+  summarytools::descr(
+    stats = c("min", "q1", "med", "mean","q3", "max",  "sd", "cv", "Skewness", "Kurtosis"),
+    justify = "c",
+    style = "rmarkdown",
+    transpose = T
+  )|>
+    kbl(
+    caption = "Medidas Resumo dos dados",
+    digits = 2,
+    format.args=list(big.mark=".", decimal.mark=","),
+    align = "c", row.names = T, booktabs = T
+  )|>
+  kable_styling(
+    full_width = F, position = 'center', 
+    latex_options = c("striped", "HOLD_position", "scale_down", "repeat_header")
+  )|>
+  column_spec(1, bold = T
+              )|>
+  # footnote(
+  #   general = "StatLib - Carnegie Mellon University",
+  #   general_title = "Fonte:",
+  #   footnote_as_chunk = T
+  #   )|>
+  kable_material()
+
+```
+
+
+Para facilitar a compreenção das medidas apresentadas na Tabela 1, a Figura 1 mostra graficamente estas distribuições.
+
+```{r}
+#| echo: false
+#| warning: false
+#| fig-align: center
+#| fig-pos: H
+
+
+# 
+# g1 <- dados|>
+#   ggplot() +
+#     aes(x = CRIM) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Criminalidade",
+#     x = "Índice",
+#     y = "Densidade"
+#   )
+# 
+# g2 <- dados|>
+#   ggplot() +
+#     aes(x = ZN) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     binwidth = 1,
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Zoneamento",
+#     x = "Proporção do Terreno",
+#     y = "Densidade"
+#   )
+# 
+# g3 <- dados|>
+#   ggplot() +
+#     aes(x = INDUS) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Empresas",
+#     x = "Hectares Ocupados",
+#     y = "Densidade"
+#   )
+# 
+# g4 <- dados|>
+#   ggplot() +
+#     aes(x = CHAS) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     binwidth = 5,
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Margem",
+#     x = "Margem do Charles River",
+#     y = "Densidade"
+#   )
+# 
+# g5 <- dados|>
+#   ggplot() +
+#   aes(x = NOX) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Óxidos Nitricos",
+#     x = "Partes por 10 milhões",
+#     y = "Densidade"
+#   )
+# 
+# g6 <- dados|>
+#   ggplot() +
+#   aes(x = RM) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Cômodos",
+#     x = "Quantidade",
+#     y = "Densidade"
+#   )
+# 
+# 
+# g7 <- dados|>
+#   ggplot() +
+#   aes(x = AGE) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Idade",
+#     x = "Proporção antes de 1940",
+#     y = "Densidade"
+#   )
+# 
+# 
+# g8 <- dados|>
+#   ggplot() +
+#   aes(x = DIS) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     binwidth = 5,
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Distância",
+#     x = "Distâncias Ponderadas",
+#     y = "Densidade"
+#   )
+# 
+# 
+# g9 <- dados|>
+#   ggplot() +
+#   aes(x = RAD) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     binwidth = 5,
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Acessibilidade",
+#     x = "Índice",
+#     y = "Densidade"
+#   )
+# 
+# 
+# g10 <- dados|>
+#   ggplot() +
+#   aes(x = TAX) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     binwidth = 5,
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Imposto",
+#     x = "Valor por $10.000",
+#     y = "Densidade"
+#   )
+# 
+# 
+# g11 <- dados|>
+#   ggplot() +
+#   aes(x = PTRATIO) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     binwidth = 5,
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Aluno/Professor",
+#     x = "Proporção",
+#     y = "Densidade"
+#   )
+# 
+# 
+# g12 <- dados|>
+#   ggplot() +
+#   aes(x = B) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     binwidth = 5,
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Negros",
+#     x = "Proporção",
+#     y = "Densidade"
+#   )
+# 
+# 
+# g13 <- dados|>
+#   ggplot() +
+#   aes(x = LSTAT) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     binwidth = 5,
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Classe",
+#     x = '% de \"Classe Baixa\"',
+#     y = "Densidade"
+#   )
+# 
+# 
+# g14 <- dados|>
+#   ggplot() +
+#   aes(x = MEDV) +
+#   geom_histogram(
+#     aes(y = ..density..),
+#     binwidth = 5,
+#     fill = "lightblue",
+#     colour = "darkblue") +
+#   geom_density(
+#     alpha = 0.2,
+#     fill = "blue",
+#     colour = "blue") +
+#   labs(
+#     title = "Valor",
+#     x = "Valor Médio",
+#     y = "Densidade"
+#   )
+# 
+# (g1+g2)/(g3+g4) + plot_annotation(
+#   title = "Figura 1: Histogramas das variáveis em análise.") &
+#   theme_bw(base_size = 8) &
+#   theme(
+#     plot.tag.position = c(0, 1),
+#     plot.tag = element_text(size = 8, hjust = 0, vjust = 0)
+#   )
+# 
+# (g5+g6)/(g7+g8) + plot_annotation() & 
+#   theme_bw(base_size = 8) &
+#   theme(
+#     plot.tag.position = c(0, 1),
+#     plot.tag = element_text(size = 8, hjust = 0, vjust = 0)
+#   )
+# 
+# (g9+g10)/(g11+g12) + plot_annotation() & 
+#   theme_bw(base_size = 8) &
+#   theme(
+#     plot.tag.position = c(0, 1),
+#     plot.tag = element_text(size = 8, hjust = 0, vjust = 0)
+#   )
+# 
+# 
+# (g13+g14)/(plot_spacer() + plot_spacer()) +
+#   theme_bw(base_size = 8) &
+#   theme(
+#     legend.position = "none",
+#     plot.tag.position = c(0, 1),
+#     plot.tag = element_text(size = 8, hjust = 0, vjust = 0)
+#   )
+```
+
+```{r fig1:Histograma}
+#| echo: false
+#| warning: false
+#| fig-height: 9
+#| fig-width: 7
+
+# Histograma ----
+{
+## g1 age ----
+g1 <- dados|>
+  ggplot() +
+  aes(x = age) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 40,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Unidades constuídas antes \nde 1940",
+    x = "Proporção",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## g2 crim ----
+g2 <- dados|>
+  ggplot() +
+  aes(x = crim) +
+  geom_histogram(
+    aes(y = ..density..),
+    fill = "lightblue",
+    colour = "darkblue",
+    # binwidth = 2
+    bins = 45
+    ) +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Índice de Criminalidade",
+    x = "Índice",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## g3 dis ----
+g3 <- dados|>
+  ggplot() +
+  aes(x = dis) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 45,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_x_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Distância para cinco centros \nde emprego.",
+    x = "Distâncias Ponderadas",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## g4 indus ----
+g4 <- dados|>
+  ggplot() +
+  aes(x = indus) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 40,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Negócios não varejistas \npor bairro",
+    x = "Proporção de hectares ocupados",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## g5 lstat ----
+g5 <- dados|>
+  ggplot() +
+  aes(x = lstat) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 40,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = 'População de "classe baixa"',
+    x = 'Percentual',
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## g6 medv ----
+g6 <- dados|>
+  ggplot() +
+  aes(x = medv) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 35,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Valor médio de residências \nocupadas",
+    x = "Valor Médio",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## g7 nox ----
+g7 <- dados|>
+  ggplot() +
+  aes(x = nox) +
+  geom_histogram(
+    aes(y = ..density..),
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Concentração de Óxidos \nNitricos (NO)",
+    x = "Partes por 10 milhões",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## g8 ptratio ----
+g8 <- dados|>
+  ggplot() +
+  aes(x = ptratio) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 30,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_x_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Aluno/Professor por bairro",
+    x = "Proporção",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## g9 rm ----
+g9 <- dados|>
+  ggplot() +
+  aes(x = rm) +
+  geom_histogram(
+    aes(y = ..density..),
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Número médio de cômodos por \nhabitação",
+    x = "Quantidade",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## g10 tax ----
+g10 <- dados|>
+  ggplot() +
+  aes(x = tax) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 35,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Taxa de imposto predial",
+    x = "Valor por $10.000",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## g11 zn ----
+g11 <- dados|>
+  ggplot() +
+  aes(x = zn) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 35,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Proporção de Terreno Zoneado",
+    x = "Proporção de Terreno",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## g12 b ----
+g12 <- dados|>
+  ggplot() +
+  aes(x = b) +
+  geom_histogram(
+    aes(y = ..density..),
+    bins = 35,
+    fill = "lightblue",
+    colour = "darkblue") +
+  geom_density(
+    alpha = 0.2,
+    fill = "blue",
+    colour = "blue") +
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    )) +
+  labs(
+    title = "Proporção de Negros por bairro",
+    x = "Proporção",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+g1 + g2 + g3 + g4 + g5 + g6 + g7 + g8 + g9 + g10 + g11 + g12 + 
+  plot_layout(ncol = 3) + 
+  plot_annotation(
+    title = "Figura 1: Histogramas das variáveis em análise.",
+    caption = "Fonte: StatLib - Carnegie Mellon University",
+    tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+    tag_suffix = ":") &
+  theme(
+    plot.tag.position = c(0, 1),
+    plot.tag = element_text(size = 5.5, hjust = 0, vjust = -0.4))
+}
+```
+
+
+Desta análise inicial, destancam-se algumas características:
+
+- O Índice de criminalidade per capita por bairro é bastante baixo na maioria dos bairros (Sub.Fig B);
+- A Proporção de terreno residencial zoneada para lotes acima de 25.000 sq.ft. contém uma alta concentração de valores zeros (Sub.Fig K);
+- Verifica-se uma concentração de empresas com cerca de 18 hectares em diversos bairros (Sub.Fig D);
+- Há uma concentração de imóveis com alto valor total do imposto predial (Sub.Fig J);
+- A maior parte dos bairros tinha alta proporção de negros (Sub.Fig L). 
+
+
+Tendo em vista o fato de as variáveis categóricas não estarem representadas na Figura 1, foi construída a figura 2 com gráficos que possibilitam a avaliação do comportamento dessas variáveis de maneira mais adequada.
+
+```{r fig2:Grafico_Barras+Rosca}
+#| echo: false
+#| warning: false
+#| fig-height: 6
+#| fig-width: 7
+
+p1 <- dados|>
+  ggplot(aes(x = rad, y = after_stat(count)/sum(after_stat(count))))+
+  geom_bar(fill = "darkblue")+ 
+  geom_text(
+    aes(
+      label = scales::percent((after_stat(count))/sum(after_stat(count)), big.mark = ".", decimal.mark = ","),
+      y = after_stat(count)/sum(after_stat(count))),
+    stat = "count", vjust = -0.2, size = 1.8
+  ) +
+  labs(
+    title = "Índice de Acessibilidade às Rodovias",
+    x = "Índice",
+    y = "Frequência Relativa"
+  )+
+  scale_y_continuous(labels = scales::percent)+
+  scale_x_discrete(limits = c(1:25))+
+  theme_minimal()+
+    theme(
+    legend.position = "none", title = element_text(size = 7.5))
+
+p2 <- dados %>% 
+  count(chas) %>%
+  mutate(
+    tipo = case_when(
+      chas == "0" ~ "Não Margeiam o rio",
+      chas == "1" ~ "Margeiam o rio"),
+    pct = round(prop.table(n)*100, 2), 
+    rotulo = glue::glue('{tipo}\n{n} ({pct}%)')) %>% 
+  ggpubr::ggdonutchart(., "pct", 
+                       label = "rotulo", lab.pos = "out",
+                       lab.font = c(3, "plain", "black"),
+                       fill = "chas",  color = "white",
+                       palette = c("darkblue", "skyblue"))+
+  labs(
+    title = "Imóveis que margeiam o Rio Charles"
+  )+
+  theme(
+    legend.position = "none", title = element_text(size = 7.5)
+  )
+
+p1 + p2 +
+  plot_layout(nrow = 2, widths = 3) +
+  plot_annotation(
+    title = "Figura 2: Distribuição de Frequência das Variáveis Categóricas.",
+    caption = "Fonte: StatLib - Carnegie Mellon University",
+    tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+    tag_suffix = ":") &
+  # theme_minimal(base_size = 7.5) &
+  theme(
+    plot.tag.position = c(0, 1),
+    plot.tag = element_text(size = 5.5, hjust = 0, vjust = -0.4))
+
+```
+
+
+Avaliando a Figura 2 é possível constatar na Sub.Fig A que representa a frequência do Índice de Acessibilidade às Rodovias a existência de um comportamento tri modal e que há uma lacuna entre os índices, sendo este *gap* entre o índice 8 e o índice 24 indicando assim que há uma concentração de imóveis próximos a acessos a rodovias e que há uma parcela, cerca de 26%, que estão distantes desses acessos, podendo pressupor que esses imóveis são desvalorizados em relação aos mais próximos.
+
+A Sub.Fig B que retrata os Imóveis que margeiam o Rio Charles é possível identificar que mais de 93% não margeiam o rio, apenas uma pequena parcela margeia, podendo pressupor uma maior valorização dos imóveis que margeiam o rio.
+
+
+## Análise de Dados Atípicos
+
+Com base na variável que indica se o imóvel margeia ou não o Charles River, pode-se realizar a análise de disperção dos dados por meio de gráficos do tipo BoxPlot, como se vê na Figura 1.
+
+```{r fig3:BoxPlot}
+#| echo: false
+#| warning: false
+#| fig-height: 9
+#| fig-width: 7
+
+# BoxPlot ----
+{
+## b1 age ----
+b1 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = age)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Unidades constuídas antes \nde 1940",
+    x = "Posição",
+    y = "Proporção antes de 1940"
+  )+theme_minimal(base_size = 7.5)
+
+## b2 crim ----
+b2 <- dados|>
+  mutate(
+    chas = lvls_revalue(chas, c("Na Margem", "Afastado"))
+  )|>
+  ggplot(aes(x = chas, y = crim)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Índice de Criminalidade",
+    x = "Posição",
+    y = "Índice"
+  )+theme_minimal(base_size = 7.5)
+
+## b3 dis ----
+b3 <- dados|>
+  mutate( chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = dis)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Distância para cinco centros \nde emprego.",
+    x = "Posição",
+    y = "Distâncias Ponderadas"
+  ) +
+  scale_y_continuous(
+    labels = scales::number_format(
+      dig.mark = ".",
+      decimal.mark = ",")
+    )+theme_minimal(base_size = 7.5)
+      
+## b4 indus ----
+b4 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = indus)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Negócios não varejistas \npor bairro",
+    x = "Proporção de hectares ocupados",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## b5 lstat ----
+b5 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = lstat)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = 'População de "classe baixa"',
+    x = "Posição",
+    y = "Percentual"
+  )+theme_minimal(base_size = 7.5)
+
+## b6 medv ----
+b6 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = medv)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Valor médio de residências \nocupadas",
+    x = "Posição",
+    y = "Valor médio"
+  )+theme_minimal(base_size = 7.5)
+
+## b7 nox ----
+b7 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = nox)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Concentração de Óxidos \nNitricos (NO)",
+    x = "Posição",
+    y = "Partes por 10 milhões"
+  ) +
+  scale_y_continuous(
+    labels = scales::number_format(
+      dig.mark = ".",
+      decimal.mark = ",")
+    )+theme_minimal(base_size = 7.5)
+
+## b8 ptratio ----
+b8 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = ptratio)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Aluno/Professor por bairro",
+    x = "Posição",
+    y = "Proporção"
+  ) +
+  scale_y_continuous(
+    labels = scales::number_format(
+      dig.mark = ".",
+      decimal.mark = ",")
+    )+theme_minimal(base_size = 7.5)
+
+## b9 rm ----
+b9 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = rm)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Número médio de cômodos por \nhabitação",
+    x = "Posição",
+    y = "Quantidade"
+  )+theme_minimal(base_size = 7.5)
+
+## b10 tax ---- 
+b10 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = tax)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Taxa de imposto predial",
+    x = "Posição",
+    y = "Valor por $10.000"
+  )+theme_minimal(base_size = 7.5)
+
+## b11 zn ---- 
+b11 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = zn)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Proporção de Terreno Zoneado",
+    x = "Proporção de Terreno",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+## b12 b ---- 
+b12 <- dados|>
+  mutate(chas = lvls_revalue(chas, c("Na Margem", "Afastado")))|>
+  ggplot(aes(x = chas, y = b)) +
+  geom_boxplot(col="darkblue", fill="skyblue", alpha = 0.5)+
+  labs(
+    title = "Proporção de Negros por bairro",
+    x = "Proporção",
+    y = "Densidade"
+  )+theme_minimal(base_size = 7.5)
+
+b1 + b2 + b3 + b4 + b5 + b6 + b7 + b8 + b9 + b10 + b11 + b12 +  
+  plot_layout(ncol = 3) + 
+  plot_annotation(
+    title = "Figura 3: BoxPlot das variáveis em análise.",
+    caption = "Fonte: StatLib - Carnegie Mellon University",
+    # theme = theme_minimal(plot.title = element_text(size = 10)),
+    tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+    tag_suffix = ":") &
+  theme(
+    plot.tag.position = c(0, 1),
+    plot.tag = element_text(size = 5.5, hjust = 0, vjust = -0.4))
+}
+
+```
+
+
+Pode-se verificar pela Figura 3 que cerca de 2/3 das variáveis apresentam valores atípicos (*outlayers*), entretanto o tratamento destes *outlayers* em todos os casos parece, salvo melhor juízo, ser o mesmo. Observa-se que há coerência entre eles, isto é, são realizações possíveis e não devem ser desprezadas como se fossem erros ou dados irrelevantes. Isto se deve a tremenda variedade em tipos, propósitos e status dos imóveis avaliados. Esses dados por sua vez, representam um maior desafio ao modelamento a que esse trabalho se propõe.
+
+## Relação entre as variáveis 
+
+Antes da proposição do modelo de regressão mais bem elaborado é conveniente uma avaliação gráfica da dispersão dos valores das variáveis em relação à variável resposta **Valor Médio do Imóvel**. A Figura 4 apresenta essas dispersões de pontos e já apresenta uma linha de tendência para os valores observados.
+
+
+```{r fig4:regressao}
+#| echo: false
+#| warning: false
+#| fig-height: 8
+#| fig-width: 7
+
+# Dispersão ----
+{
+  ## d1 age ----
+  d1 <- dados|>
+    ggplot(aes(y = medv, x = age, color = age)) +
+    geom_point()+
+    labs(
+      title = "Unidades constuídas antes de \n1940",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Proporção antes de 1940'
+    )+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 5, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    scale_y_continuous(
+      labels = scales::number_format(
+        big.mark = ".",
+        decimal.mark = ","
+      ))+
+    geom_smooth(method=lm, se=TRUE)+
+    theme_minimal(base_size = 7.5)
+  
+  ## d2 crim ----
+  d2 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = crim, color = crim)) +
+    geom_point()+
+    labs(
+      title = 'Índice de Criminalidade',
+      y = 'Valor Médio (por $1.000)',
+      x = 'Índice'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 50, label.y = 50, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    theme_minimal(base_size = 7.5)
+
+  ## d3 dis ----
+  d3 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = dis, color = dis)) +
+    geom_point()+
+    labs(
+      title = "Distância para cinco centros de \nemprego.",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Distâncias Ponderadas'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 9, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    scale_x_continuous(
+      labels = scales::number_format(
+        big.mark = ".",
+        decimal.mark = ","
+      ))+
+    theme_minimal(base_size = 7.5)
+  
+  ## d4 indus ----
+  d4 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = indus, color = indus)) +
+    geom_point()+
+    labs(
+      title = "Negócios não varejistas por \nbairro",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Hectares Ocupados'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 1.5, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    theme_minimal(base_size = 7.5)
+
+  ## d5 lstat ----
+  d5 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = lstat, color = lstat)) +
+    geom_point()+
+    labs(
+      title = 'População de "classe baixa"',
+      y = 'Valor Médio (por $1.000)',
+      x = 'Proporção'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 25, label.y = 47.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    theme_minimal(base_size = 7.5)
+
+  ## d6 nox ----
+  d6 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = nox, color = nox)) +
+    geom_point()+
+    labs(
+      title = "Concentração de Óxidos \nNitricos (NO)",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Partes por 10 milhões'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 0.75, label.y = 47.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    scale_x_continuous(
+      labels = scales::number_format(
+        big.mark = ".",
+        decimal.mark = ","
+      ))+
+    theme_minimal(base_size = 7.5)
+  
+  ## d7 ptratio ----
+  d7 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = ptratio, color = ptratio)) +
+    geom_point()+
+    labs(
+      title = "Aluno/Professor por bairro",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Proporção'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 13, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    scale_x_continuous(
+      labels = scales::number_format(
+        big.mark = ".",
+        decimal.mark = ","
+      ))+
+    theme_minimal(base_size = 7.5)
+  
+  ## d8 rm ----
+  d8 <- dados |>
+    ggplot(aes(
+      y = medv, 
+      x = rm, color = rm)) +
+    geom_point()+
+    labs(
+      title = "Número médio de cômodos por \nhabitação",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Quantidade'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 3.7, label.y = 45, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    theme_minimal(base_size = 7.5)
+  
+  ## d9 tax ----
+  d9 <- dados |>
+    ggplot(aes(
+      x = tax, y = medv, color = tax)) +
+    geom_point()+
+    labs(
+      title = "Taxa de imposto predial",
+      y = 'Valor Médio (por $1.000)',
+      x = 'Valor por $10.000'
+    )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 200, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    theme_minimal(base_size = 7.5)
+  
+  ## d10 zn ----
+  d10 <- dados |>
+    ggplot(aes(
+      x = zn, y = medv, color = zn)) +
+    geom_point()+
+  labs(
+    title = "Proporção de Terreno Zoneado",
+    x = "Proporção",
+    y = "Densidade"
+  )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 20, label.y = 7.5, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    theme_minimal(base_size = 7.5)
+  
+  ## d11 b ----
+  d11 <- dados |>
+    ggplot(aes(
+      x = b, y = medv, color = b)) +
+    geom_point()+
+  labs(
+    title = "Proporção de Negros por bairro",
+    x = "Proporção",
+    y = "Densidade"
+  )+
+    geom_smooth(method=lm, se=TRUE)+
+    ggpubr::stat_cor(
+      aes(label = ..r.label..),
+      cor.coef.name = c("rho"),
+      label.sep = "; ", geom = "text",
+      color="red", method = "pearson", 
+      label.x = 50, label.y = 45, show.legend = F,
+      p.accuracy = 0.001, r.accuracy = 0.0001,
+      size = 2)+
+    theme_minimal(base_size = 7.5)
+
+  d1 + d2 + d3 + d4 + d5 + d6 + d7 + d8 + d9 + d10 + d11 +  
+    plot_layout(ncol = 3) + 
+    plot_annotation(
+      title = "Figura 4: Reta de regressão ajustada entre o Valor médio dos imóveis e demais medições",
+      # caption = "Fonte: StatLib - Carnegie Mellon University\nValor do Coeficiente de Correlação de Pearson em vermelho",
+      tag_levels = c("A", "1"), tag_prefix = "Sub Fig. ", tag_sep = ".",
+      tag_suffix = ":") &
+    theme(
+      legend.position = "none",
+      plot.tag.position = c(0, 1),
+      plot.tag = element_text(size = 5.5, hjust = 0, vjust = -0.4))
+
+}
+```
+
+
+Para avaliar a significância das correlações entre as variáveis com  relação ao **Valor Médio do Imóvel** segue a Tabela 2 com os resultados do Teste de Hipóteses com nível de significância de 5% que tem como hipóteses:
+
+$$H_0: \widehat{\rho} = 0$$
+
+$$H_1: \widehat{\rho} \neq 0.$$
+```{r tab2:TesteHipo_CorPearson}
+#| echo: false
+#| warning: false
+
+# Correlação 2 ----
+
+# Cor Test
+cortestCrim <- stats::cor.test(dados$medv, dados$crim)
+cortestZn <- stats::cor.test(dados$medv, dados$zn)
+cortestIndus <- stats::cor.test(dados$medv, dados$indus)
+cortestNox <- stats::cor.test(dados$medv, dados$nox)
+cortestRm <- stats::cor.test(dados$medv, dados$rm)
+cortestAge <- stats::cor.test(dados$medv, dados$age)
+cortestDis <- stats::cor.test(dados$medv, dados$dis)
+cortestTax <- stats::cor.test(dados$medv, dados$tax)
+cortestPtratio <- stats::cor.test(dados$medv, dados$ptratio)
+cortestB <- stats::cor.test(dados$medv, dados$b)
+cortestLstat <- stats::cor.test(dados$medv, dados$lstat)
+
+# Estatística t
+resultados <- rbind(cortestCrim$statistic, 
+           cortestZn$statistic, 
+           cortestIndus$statistic,
+            cortestNox$statistic,
+            cortestRm$statistic,
+            cortestAge$statistic,
+            cortestDis$statistic,
+            cortestTax$statistic,
+            cortestPtratio$statistic,
+            cortestB$statistic,
+            cortestLstat$statistic)
+
+# p-valor
+aux <- rbind(cortestCrim$p.value,
+cortestZn$p.value,
+cortestIndus$p.value,
+cortestNox$p.value,
+cortestRm$p.value,
+cortestAge$p.value,
+cortestDis$p.value,
+cortestTax$p.value,
+cortestPtratio$p.value,
+cortestB$p.value,
+cortestLstat$p.value)
+
+resultados <- cbind(resultados, aux)
+
+# IC
+aux <- rbind(cortestCrim$conf.int[1:2],
+             cortestZn$conf.int[1:2],
+             cortestIndus$conf.int[1:2],
+             cortestNox$conf.int[1:2],
+             cortestRm$conf.int[1:2],
+             cortestAge$conf.int[1:2],
+             cortestDis$conf.int[1:2],
+             cortestTax$conf.int[1:2],
+             cortestPtratio$conf.int[1:2],
+             cortestB$conf.int[1:2],
+             cortestLstat$conf.int[1:2])
+
+resultados <- cbind(resultados, aux)
+
+rownames(resultados) <- c("Índice Criminalidade", "Prop. Terreno Zoneado", "Área Industrial", "Índice Oxido Nítrico", "N° Cômodos", "Idade do Imóvel", "Dist. Empregos", "Imposto Propriedade", "Prop. Prof.-Aluno", "Prop. Negros/bairro", "Pop. Classe Baixa")
+colnames(resultados) <- c("t", "p-valor", "LI", "LS")
+
+resultados|>
+  kbl(
+    caption = "Teste de Hipótese para Correlação",
+    digits = 5,
+    format.args=list(big.mark=".", decimal.mark=","),
+    align = "c", row.names = T, booktabs = T
+  )|>
+  kable_styling(
+    full_width = F, position = 'center', 
+    latex_options = c("striped", "HOLD_position", "repeat_header")
+  )|>
+  column_spec(1, bold = T
+  )|>
+  footnote(
+    general = "Teste realizado com 5% de significância",
+    general_title = "Nota:",
+    footnote_as_chunk = T
+  )|>
+  kable_material()
+
+
+```
+
+
+Conforme expresso na Tabela 2, levando em consideração o **p-valor** a Hipótese Nula foi rejeitada, e com 95% de confiança se pode afirmar que **é significativa a relação linear entre todas as variáveis em estudo.**
+
+
+Na avaliação da Figura 4, observa-se que nenhuma das variáveis tem uma aparente forte correlação com o valor médio dos imóveis. A Tabela 3, apresenta os valores calculados de $\hat \beta_0$ e $\hat\beta_1$ que estimam os valores do modelo $Y_i =\beta_0 + \beta_1X_i + \epsilon_i$ com seus respectivos erros padrão ($\sigma_0$ e $\sigma_1$), além de calcular o p-valor desta regressão linear como forma de identificar a rejeição ou não do modelo proposto. Nesta mesma linha, o valor estimado do Coeficiente de Determinação ($R^2$) também foi calculado.
+
+
+```{r ajuste_modelo}
+#| echo: false
+#| warning: false
+
+# Ajuste do Modelo 2 ----
+
+mCrim <- lm(dados$medv~dados$crim)
+mIndus <- lm(dados$medv~dados$indus)
+mNox <- lm(dados$medv~dados$nox)
+mRm <- lm(dados$medv~dados$rm)
+mAge <- lm(dados$medv~dados$age)
+mDis <- lm(dados$medv~dados$dis)
+mTax <- lm(dados$medv~dados$tax)
+mPtratio <- lm(dados$medv~dados$ptratio)
+mLstat <- lm(dados$medv~dados$lstat)
+mZn <- lm(dados$medv~dados$zn)
+mB <- lm(dados$medv~dados$b)
+
+# Calculando e armazenando o beta0 e erro padrão0
+resultados <-  rbind(
+  summary(mCrim)$coefficients[1,],
+  summary(mIndus)$coefficients[1,],
+  summary(mNox)$coefficients[1,],
+  summary(mRm)$coefficients[1,],
+  summary(mAge)$coefficients[1,],
+  summary(mDis)$coefficients[1,],
+  summary(mTax)$coefficients[1,],
+  summary(mPtratio)$coefficients[1,],
+  summary(mLstat)$coefficients[1,],
+  summary(mZn)$coefficients[1,],
+  summary(mB)$coefficients[1,])
+
+# Removendo testes
+resultados <-  resultados[, -c(3,4)]
+
+# Calculando e armazenando o beta1 e erro padrão1
+aux <-  rbind(
+  summary(mCrim)$coefficients[2,],
+  summary(mIndus)$coefficients[2,],
+  summary(mNox)$coefficients[2,],
+  summary(mRm)$coefficients[2,],
+  summary(mAge)$coefficients[2,],
+  summary(mDis)$coefficients[2,],
+  summary(mTax)$coefficients[2,],
+  summary(mPtratio)$coefficients[2,],
+  summary(mLstat)$coefficients[2,],
+  summary(mZn)$coefficients[2,],
+  summary(mB)$coefficients[2,])
+
+# Mantém apenas beta1 e o erro padrão
+aux <- aux[, -c(3,4)]
+
+resultados <- cbind(resultados, aux)
+
+# Função para calcular o p-valor
+lmp <- function (modelobject) {
+  if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+  f <- summary(modelobject)$fstatistic
+  p <- pf(f[1],f[2],f[3],lower.tail=F)
+  attributes(p) <- NULL
+  return(p)
+}
+
+# Calculando e armazenando o p-valor
+aux <- rbind(
+  lmp(mCrim), lmp(mIndus),
+  lmp(mNox), lmp(mRm), lmp(mAge), 
+  lmp(mDis), lmp(mTax), lmp(mPtratio),
+  lmp(mLstat), lmp(mZn),lmp(mB)
+)
+
+resultados <- cbind(resultados, aux)
+
+# Calculando e armazenando o Coeficiente de Correlação
+aux <-  rbind(
+  summary(mCrim)$r.squared,
+  summary(mIndus)$r.squared,
+  summary(mNox)$r.squared,
+  summary(mRm)$r.squared,
+  summary(mAge)$r.squared,
+  summary(mDis)$r.squared,
+  summary(mTax)$r.squared,
+  summary(mPtratio)$r.squared,
+  summary(mLstat)$r.squared,
+  summary(mZn)$r.squared,
+  summary(mB)$r.squared)
+
+resultados <- cbind(resultados, aux)
+
+# Inserindo o nome das variáveis (colunas)
+rownames(resultados) <- c("Índice Criminalidade", "Área Industrial", "Índice Oxido Nítrico", "N° Cômodos", "Idade do Imóvel", "Dist. Empregos", "Imposto Propriedade", "Prop. Prof.-Aluno", "Pop. Classe Baixa", "Prop. Terreno Zoneado", "Prop. Negros/bairro")
+
+# "Valor do Imóvel" = medv, "Acessibilidade Rodovias" = rad,  = zn,  = b
+
+# Inserindo o nome das linhas
+colnames(resultados) <- c("$\\beta_0$", "$\\sigma_0$", "$\\beta_1$", "$\\sigma_1$", "p-valor", "$R^2$")
+
+```
+
+
+
+```{r tab3:ajuste_modelo}
+#| echo: false
+#| warning: false
+
+resultados|>
+  kbl(
+    caption = "Valores dos modelos de regressão linear simples.",
+    format.args=list(big.mark=".", decimal.mark=","),
+    digits = 3, align = "c", row.names = T, booktabs = T,
+    escape = FALSE,
+  )|>
+  kable_styling(
+    full_width = F, position = 'center', 
+    latex_options = c("striped", "HOLD_position", "repeat_header")
+  )|>
+  column_spec(1, bold = T
+  )|>
+  kable_material()
+```
+
+Tendo em vista que nesse primeiro momento a proposta é a implementação de técnicas de Regressão Linear Simples - RLS, a escolha de uma variável explicativa que aparenta melhor possibilidade de explicação do Preço Médio dos Imóveis se faz necessária. Após análise dos gráficos de dispersão, coeficiente de correlação e avaliação dos Coeficientes de Determinação a variável escolhida foi **Pop. Classe Baixa**, logo as análises a seguir serão direcionadas a avaliar o modelo com esta variável.
+
+
+<!-- Nota-se da Tabela 2, que todas as tentativas de apresentar um modelo de regressão linear para os dados se mostraram infrutíferas. Os dados da forma como apresentados não comportam a simples regressão linear. Observe que para todos os pares de variáveis apresentadas o p-valor do modelo foi de aproximadamente 0,000 e os valores absolutos do Coeficiente de Determinação abaixo de 0,74. Desta forma, é necessário uma análise dos resíduos dos modelos para fundamentar a aplicação de alguma técnica de tratamento dos dados a fim de adequá-los a um modelo de regressão linear mais adequado. -->
+
+
+## Análise de Resíduos
+
+Com base nas variáveis escolhidas para a Regressão Linear Simples - RLS, pode-se ralizar uma análise gráfica dos resíduos, como mostrado na Figura 5.
+
+```{r}
+#| echo: false
+#| warning: false
+#| tbl-colum: page
+
+res <- mLstat$residuals
+
+d1<- dados |>
+  ggplot(aes(
+    x = res, 
+    y = mLstat$effects)) +
+  geom_point(colour="darkblue")+
+  labs(
+    title = '',
+    y = 'Resíduos Ordinários',
+    x = 'Valor Médio Ajustado'
+  )+
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    ))
+
+d2 <- dados |>
+  ggplot(aes(sample=res))+
+    labs(
+    title = '',
+    y = 'Resíduos Studentizados',
+    x = 'Quantis t-Student'
+  )+
+  scale_y_continuous(
+    labels = scales::number_format(
+      big.mark = ".",
+      decimal.mark = ","
+    ))+
+  stat_qq(colour="darkblue") + stat_qq_line(col="tomato") 
+  
+
+
+d1+d2 + plot_annotation(
+  title = "Figura 5: Análise de resíduos do modelo de regressão da classe social com \n valor dos imóveis.") &
+  theme_bw(base_size = 8) &
+  theme(
+    legend.position = "none",
+    plot.tag.position = c(0, 1),
+    plot.tag = element_text(size = 8, hjust = 0, vjust = 0)
+  )
+```
+
+Os dados mostram que existem dois valores atipicos que impedem uma análise mais apurada da homocedasticidade quando observados os valores médios ajustados dos imóveis. Percebe-se ainda que apenas um grupo de dados da região central da distribuição de Student apresenta certa normalidade, enquanto as "caldas" da distribuição afastam-se significativamente da reta de normalidade.
+
+
+### Testes de diagnóstico
+
+Pode-se ainda utilizar um conjunto de testes de diagnóstico para confirmar este novo teste de significância.
+Como:
+
+- Teste de Kolmogorov-Smirnov
+- Teste de Shapiro-Wilks
+- Teste de Goldfeld-Quandt
+- Teste de Breush-Pagan
+- Teste de Park
+- Teste F para linearidade
+- Teste para avaliação da independência dos resíduos
+
+
+##### Teste de Kolmogorov-Smirnov
+
+```{r}
+#| warning: false
+#| eval: true
+#| results: false
+#| echo: false
+t.ks = ks.test(res, "pnorm", mean(res), sd(res))
+```
+
+Avalia o grau de concordância entre a distribuição de um conjunto de valores observados e determinada distribuição teórica. Consiste em comparar a distribuição de frequência acumulada da distribuição teórica com aquela observada. Realizado o teste obteve-se um p-valor de aproximadamente `r round(t.ks[[2]][1],3)`, o que demanda rejeitar a hipótese de que haja normalidade entre os dados, com um grau de confiabilidade de 95%.
+
+##### Teste de Shapiro-Wilks
+
+```{r}
+#| warning: false
+#| eval: true
+#| results: false
+#| echo: false
+
+t.sw = shapiro.test(res)
+
+```
+
+O teste de Shapiro-Wilks é um procedimento alternativo ao teste de Kolmogorov-Smirnov para avaliar normalidade.
+Realizado o teste obteve-se um p-valor de aproximadamente `r round(t.sw[[2]][1],3)`, o que, semelhantemente, demanda rejeitar a hipótese de que haja normalidade entre os dados, com um grau de confiabilidade minimamente razoável.
+
+##### Teste de Goldfeld-Quandt
+
+```{r}
+#| warning: false
+#| eval: true
+#| results: false
+#| echo: false
+
+t.gq = gqtest(mLstat)
+
+```
+
+Esse teste envolve o ajuste de dois modelos de regressão, separando-se as observações das duas extremidades da distribuição da variável dependente.
+Realizado o teste obteve-se um p-valor de aproximadamente `r round(t.gq[[5]][1],3)`, o que demanda rejeitar a hipótese de que haja homocedasticidade entre os dados, com um grau de confiabilidade de 95%. Entretanto, como o p-valor obtido é próximo do necessário para a rejeição da hipotese nula, cabe um novo teste para a confirmação do resultado obtido.
+
+##### Teste de Breush-Pagan
+
+```{r}
+#| warning: false
+#| eval: true
+#| results: false
+#| echo: false
+
+t.bp = bptest(mLstat, studentize = FALSE)
+```
+
+Esse teste é baseado no ajuste de um modelo de regressão em que a variável dependente é definida pelos resíduos do modelo de interesse.
+Se grande parte da variabilidade dos resíduos não é explicada pelo modelo, então rejeita-se a hipótese de homocedasticidade.
+Realizado o teste obteve-se um p-valor de aproximadamente `r round(t.bp[[4]][1],3)`, desta foram deve-se rejeitar a hipótese de que haja homocedasticidade entre os dados, com um grau de confiabilidade de 95%.
+
+##### Teste de Park
+
+```{r}
+#| warning: false
+#| eval: true
+#| results: false
+#| echo: false
+res2 <- res^2
+t.p = summary(lm(res2 ~ dados$lstat))
+```
+
+Esse teste é baseado no ajuste de um modelo de regressão em que a variável dependente é definida pelos quadrados dos resíduos do modelo de interesse.
+Nesse caso, se $\beta_1$ diferir significativamente de zero, rejeita-se a hipótese de homocedasticidade.
+O valor de $\beta_1$ obtido no teste foi de `r round(t.p[[4]][2],3)` com p-valor de aproximadamente `r round(t.p[[4]][8],3)`.
+Por esse teste deve-se rejeitar a hipótese de homocedasticidade, com confiabilidade de 95%.
+
+##### Teste F para linearidade
+
+```{r}
+#| warning: false
+#| eval: true
+#| results: false
+#| echo: false
+m_kmedias <- lm(dados$medv ~ factor(dados$lstat))
+t.fl = anova(mLstat, m_kmedias)
+```
+
+O teste da falta de ajuste permite testar formalmente a adequação do ajuste do modelo de regressão.
+Neste ponto assume-se que os pressupostos de normalidade, variância constante e independência são satisfeitos, como demosntrado pelos testes realizados. A ideia central para testar a linearidade é decompor SQRes em duas partes: erro puro e falta de ajuste que vão contribuir para a definição da estatística de teste F.
+Realizado o teste obteve-se um valore de p-valor igual a `r round(t.fl[[6]][2],3)`, o que demanda a rejeição da hipótese que há uma relação linear entre as variáveis. 
+
+
+##### Teste para avaliação da independência dos resíduos
+
+```{r}
+#| warning: false
+#| eval: true
+#| results: false
+#| echo: false
+t.dw = dwtest(mLstat)
+```
+
+Tendo em vista, o resultado obtido no teste anterior esse teste pode esclarecer ainda mais o ajuste do modelo.   
+O teste para avaliação da independência dos resíduos é utilizado para detectar a presença de autocorrelação provenientes de análise de regressão.  Realizando o teste obteve-se um valor de p-valor aproximadadente igual a `r round(t.dw[[4]][1],3)`, indicando que se deve rejeitar a hipotese que não existe correlação serial entre os dados, com uma confiança de 95%.
+
+
+
+# Conclusão
+
+Da análise descritiva das variáveis deste banco de dados não se observa, situações impeditivas da proposta de modelamento por resgressão linear dos dados como forma de predizer o valor dos imóveis de Boston. Mesmo a análise de valores atípicos contribui com essa possibilidade uma vez que os valores candidatos a valores atípicos na verdade compõem o rol de dados relevantes uma vez que há enorme variedade em tipos, propósitos e status dos imóveis avaliados. Esses dados por suavez, representam um maior desafio ao modelamento a que esse trabalho se propõe.  
+No teste da hipótese de correlação, todas as variáveis apresentaram significativa relação linear com o valor médio do imóvel, mesmo em casos que o coeficiente de determinação ($R^2$) se apresentou muito baixo.   
+A implementação de técnicas de Regressão Linear Simples - RLS, para a variável explicativa que aparenta melhor possibilidade de explicação do Preço Médio dos Imóveis - Pop. Classe Baixa, não se mostrou muito eficiente como observado pela análise gráfica dos resíduos. Para melhor compreensão desta análise foram feitos testes de normalidade, homocedasticidade e de independência dos resíduos, de onde se concluiu que se deve rejeitar as hipoteses de normalidade, homocedasticidade e de independencia serial dos dados, confirmando assim o que a análise gráfica demonstrou.
+
+
+
+# Referências
+
+- Harrison, David & Rubinfeld, Daniel. (1978). Hedonic housing prices and the demand for clean air. Journal of Environmental Economics and Management. 5. 81-102. 10.1016/0095-0696(78)90006-2. 
+
+- Belsley, David A. & Kuh, Edwin. & Welsch, Roy E. (1980). Regression diagnostics: identifying influential data and sources of collinearity. New York: Wiley.
+
+
+
+
+
+
+
+
+
+
