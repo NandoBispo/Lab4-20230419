@@ -1,8 +1,6 @@
 # PACOTES ----
 
-if (!require(pacman))
-  install.packages("pacman")
-library(pacman)
+if (!require(pacman)) install.packages("pacman")
 
 pacman::p_load(tidyverse,  janitor, stargazer,  sjmisc, summarytools,
                kableExtra, moments, ggpubr, formattable, gridExtra, 
@@ -71,6 +69,7 @@ kbl(
   column_spec(1, bold = T
   )
 
+# Formatação Numero ----
 # scales::number(accuracy = 0.0001, big.mark = ".", decimal.mark = ",")
 
 ## Gráfico VAs Categóricas ----
@@ -910,22 +909,6 @@ dados %>%
   select(-zn, -rad, -b, -chas) %>% 
   cor() %>% corrplot(method = "circle", type = "lower")
 
-# Ajuste do modelo ----
-(mFit <- lm(medv~lstat, data = dados))
-
-(lm(medv~lstat - 1, data = dados)) # Removendo beta0 - intercepto
-
-(lm(medv~lstat, data = dados))
-
-lm(medv ~ crim + indus + nox + rm + age + dis + tax + ptratio + lstat, data = dados)
-
-names(mFit)
-
-summary(mFit)
-
-mFit$coefficients[1]
-
-
 # Correlação 2----
 corCrim <- round(cor(dados$medv, dados$crim), 4)
 corZn <- round(cor(dados$medv, dados$zn), 4)
@@ -1032,127 +1015,21 @@ resultados|>
   kable_material()
 
 
-# 1. Ajuste do Modelo ----
+# Ajustes dos Modelos ----
+(mLstat <- lm(medv~lstat, data = dados))
 
-mCrim <- lm(dados$medv~dados$crim)
-mIndus <- lm(dados$medv~dados$indus)
-mNox <- lm(dados$medv~dados$nox)
-mRm <- lm(dados$medv~dados$rm)
-mAge <- lm(dados$medv~dados$age)
-mDis <- lm(dados$medv~dados$dis)
-mTax <- lm(dados$medv~dados$tax)
-mPtratio <- lm(dados$medv~dados$ptratio)
-mLstat <- lm(dados$medv~dados$lstat)
+(lm(medv~lstat - 1, data = dados)) # Removendo beta0 - intercepto
 
-# Calculando e armazenando o beta0 e erro padrão0
-resultados <-  cbind(
-  summary(mCrim)$coefficients[1,],
-  summary(mIndus)$coefficients[1,],
-  summary(mNox)$coefficients[1,],
-  summary(mRm)$coefficients[1,],
-  summary(mAge)$coefficients[1,],
-  summary(mDis)$coefficients[1,],
-  summary(mTax)$coefficients[1,],
-  summary(mPtratio)$coefficients[1,],
-  summary(mLstat)$coefficients[1,])
+# Exemplo de Modelo de Regressão Linear Multipla - MRLM
+lm(medv ~ crim + indus + nox + rm + age + dis + tax + ptratio + lstat, data = dados)
+# ________________________________________________
 
-# Removendo testes
-resultados <-  resultados[-c(3,4),]
+names(mLstat)
 
-# Calculando e armazenando o beta1 e erro padrão1
-aux <-  cbind(
-  summary(mCrim)$coefficients[2,],
-  summary(mIndus)$coefficients[2,],
-  summary(mNox)$coefficients[2,],
-  summary(mRm)$coefficients[2,],
-  summary(mAge)$coefficients[2,],
-  summary(mDis)$coefficients[2,],
-  summary(mTax)$coefficients[2,],
-  summary(mPtratio)$coefficients[2,],
-  summary(mLstat)$coefficients[2,])
+summary(mLstat)
 
-# Mantém apenas beta1 e o erro padrão
-aux <- aux[-c(3,4),]
-
-resultados <- rbind(resultados, aux)
-
-# Função para calcular o p-valor
-lmp <- function (modelobject) {
-  if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
-  f <- summary(modelobject)$fstatistic
-  p <- pf(f[1],f[2],f[3],lower.tail=F)
-  attributes(p) <- NULL
-  return(p)
-}
-
-# Calculando e armazenando o p-valor
-aux <- cbind(
-  lmp(mCrim), lmp(mIndus),
-  lmp(mNox), lmp(mRm),
-  lmp(mAge), lmp(mDis),
-  lmp(mTax),lmp(mPtratio),lmp(mLstat))
-
-resultados <- rbind(resultados, aux)
-
-# Calculando e armazenando o Coeficiente de Correlação
-aux <-  cbind(
-  summary(mCrim)$r.squared,
-  summary(mIndus)$r.squared,
-  summary(mNox)$r.squared,
-  summary(mRm)$r.squared,
-  summary(mAge)$r.squared,
-  summary(mDis)$r.squared,
-  summary(mTax)$r.squared,
-  summary(mPtratio)$r.squared,
-  summary(mLstat)$r.squared)
-
-resultados <- rbind(resultados, aux)
-
-# Inserindo o nome das variáveis (colunas)
-colnames(resultados) <- c("CRIM", "INDUS", "NOX", "RM", "AGE", "DIS", "TAX", "PTRATIO", "LSTAT")
-
-# Inserindo o nome das linhas
-rownames(resultados) <- c("$\\beta_0$", "$\\sigma_0$", "$\\beta_1$", "$\\sigma_1$", "p-valor", "$\\hat \\rho$")
-
-resultados|>
-  kbl(
-    caption = "Valores dos modelos de regressão linear simples.",
-    format.args=list(big.mark=".", decimal.mark=","),
-    digits = 3, align = "c", row.names = T, booktabs = T,
-    # format = "latex", 
-    escape = FALSE,
-  )|>
-  kable_styling(
-    full_width = F, position = 'center', 
-    latex_options = c("striped", "HOLD_position", "scale_down", "repeat_header")
-  )|>
-  column_spec(1, bold = T
-  )|>
-  footnote(
-    general = "StatLib - Carnegie Mellon University",
-    general_title = "Fonte:",
-    footnote_as_chunk = T
-  )|>
-  kableExtra::add_footnote(c("Legenda:"), notation = "none")|>
-  kableExtra::add_footnote(c(
-  "AGE: Proporção de unidades próprias construídas antes de 1940.",
-  "CRIM: Índice de criminalidade per capita por bairro.",
-  "DIS: Distâncias ponderadas para cinco centros de emprego de Boston.",
-  "INDUS: Proporção de hectares de negócios não varejistas por bairro.",
-  'LSTAT: Percentual da população de "classe baixa".',
-  "NOX: Concentração de óxidos nítricos (partes por 10 milhões).",
-  "PTRATIO: Proporção aluno-professor por bairro.",
-  "RM: Número médio de cômodos por habitação.",
-  "TAX: Valor total do imposto predial por $10.000."),
-    notation = "none"
-  )|>
-  kable_material()
-
-
-
-# ----
-
-# 2. Ajuste do Modelo 2 ----
+mLstat$coefficients[1]
+# ________________________________________________
 
 mCrim <- lm(dados$medv~dados$crim)
 mIndus <- lm(dados$medv~dados$indus)
@@ -1246,157 +1123,149 @@ rownames(resultados) <- c("Índice Criminalidade", "Área Industrial", "Índice 
 colnames(resultados) <- c("$\\beta_0$", "$\\sigma_0$", "$\\beta_1$", "$\\sigma_1$", "p-valor", "$R^2$")
 
 
-# 3. Ajuste do Modelo ----
-
-mCrim <- lm(dados$medv~dados$crim)
-mIndus <- lm(dados$medv~dados$indus)
-mNox <- lm(dados$medv~dados$nox)
-mRm <- lm(dados$medv~dados$rm)
-mAge <- lm(dados$medv~dados$age)
-mDis <- lm(dados$medv~dados$dis)
-mTax <- lm(dados$medv~dados$tax)
-mPtratio <- lm(dados$medv~dados$ptratio)
-mLstat <- lm(dados$medv~dados$lstat)
-mZn <- lm(dados$medv~dados$zn)
-mB <- lm(dados$medv~dados$b)
-
-# Calculando e armazenando o beta0 e erro padrão0
-resultados <-  rbind(
-  summary(mCrim)$coefficients[1,],
-  summary(mIndus)$coefficients[1,],
-  summary(mNox)$coefficients[1,],
-  summary(mRm)$coefficients[1,],
-  summary(mAge)$coefficients[1,],
-  summary(mDis)$coefficients[1,],
-  summary(mTax)$coefficients[1,],
-  summary(mPtratio)$coefficients[1,],
-  summary(mLstat)$coefficients[1,],
-  summary(mZn)$coefficients[1,],
-  summary(mB)$coefficients[1,])|>
-  # format(big.mark = ".", decimal.mark = ",", digits = 4, scientific = F)|>
-  round(4)
-
-# options(big.mark = ".", decimal.mark = ",")
-
-# Removendo testes
-resultados <-  resultados[, -c(3,4)]
-
-resultados <- glue::glue("{resultados[,1]}\n({resultados[,2]})")
-
-
-# scales::number(accuracy = 0.0001, big.mark = ".", decimal.mark = ",")
-
-
-# Calculando e armazenando o beta1 e erro padrão1
-aux <-  rbind(
-  summary(mCrim)$coefficients[2,],
-  summary(mIndus)$coefficients[2,],
-  summary(mNox)$coefficients[2,],
-  summary(mRm)$coefficients[2,],
-  summary(mAge)$coefficients[2,],
-  summary(mDis)$coefficients[2,],
-  summary(mTax)$coefficients[2,],
-  summary(mPtratio)$coefficients[2,],
-  summary(mLstat)$coefficients[2,],
-  summary(mZn)$coefficients[2,],
-  summary(mB)$coefficients[2,])|>round(4)
-
-# Mantém apenas beta1 e o erro padrão
-aux <- aux[, -c(3,4)]
-
-aux <- glue::glue("{aux[,1]}\n({aux[,2]})")
-
-resultados <- cbind(resultados, aux)
-
-# Função para calcular o p-valor
-lmp <- function (modelobject) {
-  if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
-  f <- summary(modelobject)$fstatistic
-  p <- pf(f[1],f[2],f[3],lower.tail=F)
-  attributes(p) <- NULL
-  return(p)
-}
-
-# Calculando e armazenando o p-valor
-aux <- rbind(
-  lmp(mCrim), lmp(mIndus),
-  lmp(mNox), lmp(mRm), lmp(mAge), 
-  lmp(mDis), lmp(mTax), lmp(mPtratio),
-  lmp(mLstat), lmp(mZn),lmp(mB)
-) round(4)
-
-resultados <- cbind(resultados, aux)
-
-# Calculando e armazenando o Coeficiente de Correlação
-aux <-  rbind(
-  summary(mCrim)$r.squared,
-  summary(mIndus)$r.squared,
-  summary(mNox)$r.squared,
-  summary(mRm)$r.squared,
-  summary(mAge)$r.squared,
-  summary(mDis)$r.squared,
-  summary(mTax)$r.squared,
-  summary(mPtratio)$r.squared,
-  summary(mLstat)$r.squared,
-  summary(mZn)$r.squared,
-  summary(mB)$r.squared)|>round(4)
-
-resultados <- cbind(resultados, aux)
-
-resultados|>
-  scales::number(accuracy = 0.0001, big.mark = ".", decimal.mark = ",")
-
-# Inserindo o nome das variáveis (colunas)
-rownames(resultados) <- c("Índice Criminalidade", "Área Industrial", "Índice Oxido Nítrico", "N° Cômodos", "Idade do Imóvel", "Dist. Empregos", "Imposto Propriedade", "Prop. Prof.-Aluno", "Pop. Classe Baixa", "Prop. Terreno Zoneado", "Prop. Negros/bairro")
-
-# "Valor do Imóvel" = medv, "Acessibilidade Rodovias" = rad,  = zn,  = b
-
-# Inserindo o nome das linhas
-colnames(resultados) <- c("$\\beta_0$", "$\\beta_1$", "p-valor", "$\\hat \\rho$")
-# colnames(resultados) <- c("$\\beta_0$", "$\\sigma_0$", "$\\beta_1$", "$\\sigma_1$", "p-valor", "$\\hat \\rho$")
-
 resultados|>
   kbl(
-    caption = "Valores dos modelos de regressão linear simples.",
+    caption = "Sumarização dos Modelos Ajustados de Regressão Linear Simples - RLS.",
     format.args=list(big.mark=".", decimal.mark=","),
-    digits = 4, align = "c", row.names = T, booktabs = T,
-    # format = "latex", 
+    digits = 3, align = "c", row.names = T, booktabs = T,
     escape = FALSE,
+    col.names = c("Estimativa", "Erro Padrão", "Estatística t", "p-valor", "Estimativa", "Erro Padrão", "Estatística t", "p-valor", "$R^2$")
   )|>
   kable_styling(
     full_width = F, position = 'center', 
-    latex_options = c("striped", "HOLD_position", "scale_down", "repeat_header")
+    latex_options = c("striped", "HOLD_position", "repeat_header", "scale_down")
   )|>
   column_spec(1, bold = T
   )|>
+  add_header_above(c(" " = 1, "$\\beta_0$" = 4, "$\\beta_1$" = 4, " " = 1))|>
+  kable_material()
+
+
+# Significância ANOVA ----
+
+# fit_anova <- anova(mLstat)
+# fit_sumario <- summary(mLstat)
+# ic_parametros <- confint(mLstat)
+
+# ic_parametros <- confint(mLstat)
+
+ic_parametros[1,1]
+
+resultados <- cbind(anova(mLstat), confint(mLstat))
+
+rownames(resultados) <- c("$\\beta_0$", "$\\beta_1$")
+
+resultados|>
+  kbl(
+    caption = "Análise de Variância (ANOVA) e Intervalos de Confiança para os parâmetros estimados no MRLS.",
+    format.args=list(big.mark=".", decimal.mark=","),
+    digits = 3, align = "c", row.names = T, booktabs = T,
+    escape = F,
+    col.names = c("GL", "Soma de Quadrados", "Quadrado Médio", "Estatística F-Snedecor", "p-valor", "$\\alpha$ = 2,5%", "(1 - $\\alpha$) = 97,5%")
+  )|>
+  kable_styling(
+    full_width = F, position = 'center', 
+    latex_options = c("striped", "HOLD_position", "repeat_header")
+  )|>
+  column_spec(1, bold = T
+  )|>
+  add_header_above(c(" " = 1, "ANOVA" = 5, "Intervalos de Confiança" = 2))|>
+  kable_material()
+
+# fit_sumario[["coefficients"]] %>% tibble::as_tibble() %>% 
+# teste %>% tibble::as_tibble() %>% 
+#   kbl(
+#     caption = "Sumarização do modelo ajustado.",
+#     digits = 4,
+#     format.args=list(big.mark=".", decimal.mark=","),
+#     align = "c", 
+#     row.names = T,
+#     col.names =
+#       c("Estimativa", "Erro Padrão", "Estatística t", "p-valor")
+#   ) %>% 
+#   footnote(
+#     number = c("Linha 1: Dados referentes a β0", "Linha 2: Dados referentes a β1"),
+#     number_title = "Legenda:",
+#     footnote_as_chunk = F
+#   )|>
+#   kable_styling(
+#     full_width = F, position = 'center', 
+#     latex_options = c("striped", "HOLD_position", "repeat_header"))|>
+#   column_spec(1, bold = F)|>
+#   kable_material()
+
+fit_anova %>%
+  kbl(
+    caption = "Resultados da ANOVA.",
+    digits = 4,
+    format.args=list(big.mark=".", decimal.mark=","),
+    align = "c", 
+    row.names = F,
+    col.names =
+      c("GL", "SQ", "QM", "Estatística", "p-valor")
+  ) %>%
   footnote(
-    general = "StatLib - Carnegie Mellon University",
-    general_title = "Fonte:",
-    footnote_as_chunk = T
-  )
+    number = c(
+      "Linha 1: Dados referentes a β0", 
+      "Linha 2: Dados referentes a β1",
+      "GL: Graus de Liberdade", 
+      "SQ: Soma de Quadrados", 
+      "QM: Quadrado Médio", 
+      "Estatística: F-Snedecor"
+    ),
+    number_title = "Legenda:",
+    footnote_as_chunk = F
+  )|>
+  kable_styling(
+    full_width = F, position = 'center', 
+    latex_options = c("striped", "HOLD_position", "repeat_header")
+  )|>
+  column_spec(1, bold = F
+  )|>
+  kable_material()
+
+ic_parametros %>% 
+  kbl(
+    caption = "Intervalo de Confiança.",
+    digits = 4,
+    format.args=list(big.mark=".", decimal.mark=","),
+    align = "c", 
+    row.names = F,
+    col.names =
+      c("α/2 = 2,5%", "1-α/2 = 97,5%")
+  ) %>%
+  footnote(
+    number = c("Linha 1: Dados referentes a β0", "Linha 2: Dados referentes a β1"),
+    number_title = "Legenda:",
+    footnote_as_chunk = F
+  )|>
+  kable_styling(
+    full_width = F, position = 'center', 
+    latex_options = c("striped", "HOLD_position", "repeat_header")
+  )|>
+  column_spec(1, bold = F
+  )|>
+  kable_material()
+
 
 
 
 # Ana. Resíduos ----
-# Gráficos RBase
+## Gráficos RBase ----
 par(mfrow = c(2, 2))
 
 plot(mLstat)
 
 par(mfrow = c(1, 1))
 
-# Modelo (Referência)
-# ggplot(data = df_fit_resid) +
-#   geom_point(aes(x = .fitted, y = .resid)) +
-#   geom_hline(yintercept = 0) +
-#   labs(x = "Valores ajustados", y = "Resíduos",
-#        title = "Gráfico de resíduos contra valores ajustados")
+# _____________________________________________
 
-dados_mFit_resid <- broom::augment(mFit)
-dplyr::glimpse(dados_mFit_resid)
+## Gráficos GGplot2 ----
+dados_mLstat_resid <- broom::augment(mLstat)
+dplyr::glimpse(dados_mLstat_resid)
 
 # Gráfico de Resíduos contra Valor Médio
-dados_mFit_resid|>
+dados_mLstat_resid|>
   ggplot(aes(x = .fitted, y = .resid)) + 
   geom_point(color = "#234B6E") +
   geom_hline(yintercept = 0, linetype = 2, size = 0.2) +
@@ -1414,7 +1283,7 @@ dados_mFit_resid|>
 # seq(0,20,5)
 
 ## Gráfico de normalidade dos resíduos
-dados_mFit_resid %>% 
+dados_mLstat_resid %>% 
   ggplot(aes(sample = .std.resid)) + 
   qqplotr::stat_qq_band(alpha = 0.3) + # Plota a banda de confiança
   qqplotr::stat_qq_point(color = "#234B6E") + # Plota os pontos
@@ -1427,17 +1296,37 @@ dados_mFit_resid %>%
   scale_x_continuous(breaks = seq(-3,3,1))+
   theme_minimal(base_size = 7.5)
 
+## Gráfico Homogeneidade de Variâncias (Locação-Escala)
+dados_mLstat_resid %>% 
+  ggplot(aes(x = .fitted, y = sqrt(abs(.std.resid)))) + 
+  geom_point(color = "#234B6E") +
+  # geom_hline(yintercept = 0, linetype = 2, size = 0.2) +
+  geom_smooth(
+    se = T, color = "tomato", method = 'loess', formula = 'y ~ x')+
+  # ylab("$\\sqrt(Resíduos Padronizados)$")+
+  # ggtitle("Teste")+
+  labs(
+    x = "Valores Ajustados",
+    y = "√|Resíduos Padronizados|",
+    title = "Homogeneidade de Variâncias (Locação-Escala)"
+  )+
+  theme_minimal(base_size = 7.5)+
+  theme(legend.position = "none")
 
 # cores: 234B6E, 023047
-# Teste pacote ----
+
+## Teste pacote ----
 pacman::p_load(performance, ggfortify)
 
-performance::check_model(mFit, 
+performance::check_model(modelo, 
+            check = c("linearity", "qq", "homogeneity", "outliers"))
+
+performance::check_model(mLstat, 
             check = c("homogeneity", "outliers"))
 
-ggfortify::autoplot(mFit)
+ggfortify::autoplot(mLstat) # Não funcionou
 
-autoplot(mFit)
+autoplot(mLstat) # Não funcionou
 # ----
 
 
@@ -1488,27 +1377,15 @@ d1+d2 + plot_annotation(
     plot.tag = element_text(size = 8, hjust = 0, vjust = 0)
   )
 
-## Gráfico de resíduos padronizads vs preditos ----
-dados_mFit_resid %>% 
-  ggplot(aes(x = .fitted, y = .std.resid)) + 
-  geom_point(color = "#234B6E") +
-  geom_hline(yintercept = 0, linetype = 2, size = 0.2) +
-  geom_smooth(
-    se = T, color = "tomato", method = 'loess', formula = 'y ~ x')+
-  labs(
-    x = "Valores Preditos",
-    y = "$\\sqrt(Resíduos Padronizados)$",
-    title = "Homogeneidade de Variâncias"
-  )+
-  theme(legend.position = "none" )
+
 
 mLstat$residuals
 
-dados_mFit_resid$.resid
+dados_mLstat_resid$.resid
 
 ks.test(res, "pnorm", mean(res), sd(res))
 
-ks.test(dados_mFit_resid$.resid, "pnorm", mean(dados_mFit_resid$.resid), sd(dados_mFit_resid$.resid))
+ks.test(dados_mLstat_resid$.resid, "pnorm", mean(dados_mLstat_resid$.resid), sd(dados_mLstat_resid$.resid))
 
 devtools
 
