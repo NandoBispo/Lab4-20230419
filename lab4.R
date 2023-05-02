@@ -1155,6 +1155,8 @@ resultados <- cbind(anova(mLstat), confint(mLstat))
 
 rownames(resultados) <- c("$\\beta_0$", "$\\beta_1$")
 
+resultados %>% tibble::as_tibble()
+
 resultados|>
   kbl(
     caption = "Análise de Variância (ANOVA) e Intervalos de Confiança para os parâmetros estimados no MRLS.",
@@ -1389,8 +1391,69 @@ ks.test(dados_mLstat_resid$.resid, "pnorm", mean(dados_mLstat_resid$.resid), sd(
 
 devtools
 
+# Teste de Diagnóstico ----
+
+t.ks = ks.test(dados_mFit_resid$.resid, "pnorm", mean(dados_mFit_resid$.resid), sd(dados_mFit_resid$.resid))
+
+t.sw = shapiro.test(dados_mFit_resid$.resid)
+
+t.gq = gqtest(mLstat)
+
+t.bp = bptest(mLstat, studentize = FALSE)
+
+t.dw = dwtest(mLstat)
+
+m_kmedias <- lm(dados$medv ~ factor(dados$lstat))
+
+t.fl = anova(mLstat, m_kmedias)
+
+round(t.fl[[6]][2],3) #dando erro na geração do pdf.
+
+res2 <- (dados_mFit_resid$.resid)^2
+t.p = summary(lm(res2 ~ dados$lstat))
+t.p$fstatistic
+t.p
 
 
+resultados <- rbind(
+t.ks$statistic,
+t.sw$statistic,
+t.gq$statistic,
+t.bp$statistic,
+t.dw$statistic)
+
+aux <- rbind(
+t.ks$p.value,
+t.sw$p.value,
+t.gq$p.value,
+t.bp$p.value,
+t.dw$p.value)
+
+resultados <- cbind(resultados, aux)
+
+rownames(resultados) <- c("Kolmogorov-Smirnov", "Shapiro-Wilks", "Goldfeld-Quandt", "Breush-Pagan", "Durbin-Watson")
+
+colnames(resultados) <- c("Estatística teste", "p-valor")
+
+resultados|>
+  kbl(
+    caption = "Testes de Diagnósticos dos Resíduos",
+    digits = 5,
+    format.args=list(big.mark=".", decimal.mark=","),
+    align = "c", row.names = T, booktabs = T
+  )|>
+  kable_styling(
+    full_width = F, position = 'center', 
+    latex_options = c("striped", "HOLD_position", "repeat_header")
+  )|>
+  column_spec(1, bold = T
+  )|>
+  # footnote(
+  #   general = "Teste realizado com 5% de significância",
+  #   general_title = "Nota:",
+  #   footnote_as_chunk = T
+  # )|>
+  kable_material()
 
 
 # FIM ----
